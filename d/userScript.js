@@ -12,6 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
+    var VERSION = 'v3';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -24,7 +25,7 @@
     window.addEventListener('error', function (e) {
         log('error', e.message, e.filename, e.lineno);
     });
-    log('start', location.href, 'state=' + document.readyState, 'body=' + !!document.body,
+    log('start', VERSION, location.href, 'state=' + document.readyState, 'body=' + !!document.body,
         'closest=' + typeof Element.prototype.closest, 'again=' + !!window.__tvstyle);
     if (window.__tvstyle) return;
     window.__tvstyle = true;
@@ -42,7 +43,6 @@
 
     // ---------- styles ----------
     var CSS = [
-        ':root{--tv-glass:rgba(34,34,40,.78);--tv-stroke:rgba(255,255,255,.17);--tv-ring:#fffaee;--tv-halo:rgba(230,210,180,.55);}',
         /* YouTube's guide keeps working but is not shown; the page no longer slides right when it has focus */
         'ytlr-guide-response{opacity:0!important;}',
         'ytlr-surface-page,ytlr-search-container,ytlr-app-background-container{transform:translateX(-64px)!important;width:calc(100% + 64px)!important;}',
@@ -56,7 +56,7 @@
         '#tv-bar{position:fixed;top:26px;left:40px;right:40px;height:52px;z-index:2147483000;display:flex;align-items:center;' +
         'font-family:"YouTube Sans",Roboto,Arial,sans-serif;color:#fff;transition:opacity .2s,transform .2s;}',
         '#tv-bar.hidden{opacity:0;transform:translateY(-12px);}',
-        '#tv-bar .gl{background:var(--tv-glass);border:1px solid var(--tv-stroke);box-shadow:inset 0 1px 0 var(--tv-stroke),0 12px 30px rgba(0,0,0,.35);}',
+        '#tv-bar .gl{background:rgba(34,34,40,.78);border:1px solid rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 12px 30px rgba(0,0,0,.35);}',
         '#tv-bar .badge{height:52px;box-sizing:border-box;border-radius:26px;padding:0 22px 0 16px;display:flex;align-items:center;font-size:20px;font-weight:700;flex:none;}',
         '#tv-bar .badge i{width:12px;height:12px;border-radius:50%;background:#ff2d2d;margin-right:10px;}',
         '#tv-bar .tabs{position:absolute;left:50%;transform:translateX(-50%);height:52px;box-sizing:border-box;border-radius:26px;padding:5px;overflow:hidden;}',
@@ -68,8 +68,16 @@
         '#tv-bar .right{margin-left:auto;display:flex;gap:12px;flex:none;}',
         '#tv-bar .circ{width:52px;height:52px;box-sizing:border-box;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
         'overflow:hidden;transition:transform .15s,background .15s;}',
-        '#tv-bar .circ svg{width:24px;height:24px;}',
-        '#tv-bar .circ img{width:100%;height:100%;object-fit:cover;}',
+        '#tv-bar .g{position:relative;width:24px;height:24px;}',
+        '#tv-bar .g i{position:absolute;display:block;box-sizing:border-box;}',
+        '#tv-bar .search .a{left:2px;top:2px;width:15px;height:15px;border:2px solid #fff;border-radius:50%;}',
+        '#tv-bar .search .b{left:15px;top:13px;width:2px;height:9px;background:#fff;border-radius:1px;transform:rotate(-45deg);}',
+        '#tv-bar .person .a{left:7px;top:2px;width:10px;height:10px;border:2px solid #fff;border-radius:50%;}',
+        '#tv-bar .person .b{left:3px;top:14px;width:18px;height:10px;border:2px solid #fff;border-bottom:0;border-radius:9px 9px 0 0;}',
+        '#tv-bar .circ.f .g i{border-color:#111114;}',
+        '#tv-bar .circ.f .search .b{background:#111114;}',
+        '#tv-bar .circ.avatar{background-size:cover;background-position:center;}',
+        '#tv-bar .circ.avatar .g{display:none;}',
         '#tv-bar .circ.sel{background:rgba(255,255,255,.25);}',
         '#tv-bar .circ.f{background:#fff;color:#111114;transform:scale(1.08);}',
         '#tv-bar .circ.f img{opacity:.92;}',
@@ -77,17 +85,26 @@
         'ytlr-tile-renderer .zylon-focus,ytlr-tile-renderer.zylon-focus{}'
     ].join('\n');
 
-    /** YouTube's CSP only lets styles with its nonce through: append to its own style tag (as TizenTube does). */
+    /**
+     * Our own <style>, carrying the page's CSP nonce when there is one (browsers drop inline
+     * styles without it). Cobalt ignores text appended to an existing style element.
+     */
     function addStyle() {
-        var host = document.querySelector('style[nonce]');
-        if (host) {
-            host.textContent += '\n/* tvstyle */\n' + CSS;
-            return;
-        }
         var s = document.createElement('style');
         s.id = 'tv-style';
+        var host = document.querySelector('style[nonce]');
+        var nonce = host && (host.nonce || host.getAttribute('nonce'));
+        if (nonce) s.setAttribute('nonce', nonce);
         s.textContent = CSS;
         (document.head || document.documentElement).appendChild(s);
+        log('style added', 'nonce=' + !!nonce, 'rules=' + (s.sheet && s.sheet.cssRules ? s.sheet.cssRules.length : '?'));
+    }
+
+    /** Nearest ancestor-or-self with the tag (Cobalt has no Element.closest). */
+    function up(el, tag) {
+        tag = tag.toUpperCase();
+        for (var e = el; e && e.nodeType === 1; e = e.parentElement) if (e.tagName === tag) return e;
+        return null;
     }
 
     // ---------- keys ----------
@@ -116,11 +133,11 @@
     /** Index of the focused guide entry, -1 when focus is elsewhere. */
     function focusedEntry(entries) {
         var a = document.activeElement;
-        if (!a || !a.closest) return -1;
-        var e = a.closest('ytlr-guide-entry-renderer');
+        if (!a) return -1;
+        var e = up(a, 'ytlr-guide-entry-renderer');
         if (!e) {
             // focus can sit on a wrapper inside the guide
-            if (!a.closest('ytlr-guide-response')) return -1;
+            if (!up(a, 'ytlr-guide-response')) return -1;
             e = a.querySelector && a.querySelector('ytlr-guide-entry-renderer');
         }
         return e ? entries.indexOf(e) : -1;
@@ -164,35 +181,22 @@
             var before = document.activeElement;
             setTimeout(function () {
                 var now = document.activeElement;
-                var lost = now === before || (now && now.closest && now.closest('ytlr-search-bar'));
+                var lost = now === before || (now && up(now, 'ytlr-search-bar'));
                 if (lost) send(BACK);
             }, 160);
         }
     }, true);
 
     // ---------- bar ----------
-    var bar, strip, tabsBox, searchBtn, accountBtn, tabEls = [], builtFor = '', selected = 2;
+    var stripOff = 0, bar, strip, tabsBox, searchBtn, accountBtn, tabEls = [], builtFor = '', selected = 2;
 
-    var SVG = 'http://www.w3.org/2000/svg';
-
-    /** Small stroked icon; no innerHTML (YouTube enforces Trusted Types in browsers). */
-    function icon(shapes) {
-        var svg = document.createElementNS(SVG, 'svg');
-        svg.setAttribute('viewBox', '0 0 24 24');
-        shapes.forEach(function (s) {
-            var n = document.createElementNS(SVG, s[0]);
-            for (var a in s[1]) n.setAttribute(a, s[1][a]);
-            n.setAttribute('fill', 'none');
-            n.setAttribute('stroke', 'currentColor');
-            n.setAttribute('stroke-width', '2.1');
-            n.setAttribute('stroke-linecap', 'round');
-            svg.appendChild(n);
-        });
-        return svg;
+    /** Search and person glyphs drawn with CSS boxes (Cobalt renders no SVG). */
+    function glyph(parent, kind) {
+        var g = el('div', 'g ' + kind, parent);
+        el('i', 'a', g);
+        el('i', 'b', g);
+        return g;
     }
-
-    var ICON_SEARCH = [['circle', {cx: 10.5, cy: 10.5, r: 6.5}], ['path', {d: 'M15.5 15.5l5 5'}]];
-    var ICON_PERSON = [['circle', {cx: 12, cy: 8.5, r: 4}], ['path', {d: 'M4.5 20.5c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6'}]];
 
     function el(tag, cls, parent, text) {
         var e = document.createElement(tag);
@@ -217,9 +221,9 @@
             strip = el('div', 'strip', tabsBox);
             var right = el('div', 'right', bar);
             searchBtn = el('div', 'circ gl', right);
-            searchBtn.appendChild(icon(ICON_SEARCH));
+            glyph(searchBtn, 'search');
             accountBtn = el('div', 'circ gl', right);
-            accountBtn.appendChild(icon(ICON_PERSON));
+            glyph(accountBtn, 'person');
         }
         while (strip.firstChild) strip.removeChild(strip.firstChild);
         tabEls = [];
@@ -236,8 +240,8 @@
         tabsBox.style.width = (w + 10) + 'px';
         var img = entries[0] && entries[0].querySelector('img');
         if (img && img.src) {
-            while (accountBtn.firstChild) accountBtn.removeChild(accountBtn.firstChild);
-            el('img', '', accountBtn).src = img.src;
+            accountBtn.style.backgroundImage = 'url("' + img.src + '")';
+            accountBtn.classList.add('avatar');
         }
     }
 
@@ -250,7 +254,7 @@
             if (i < 2) return '';
             var parts = [];
             Array.prototype.forEach.call(e.querySelectorAll('*'), function (c) {
-                if (c.closest('yt-icon')) return;
+                if (up(c, 'yt-icon')) return;
                 parts.push(typeof c.className === 'string' ? c.className : '');
             });
             return parts.join('/');
@@ -295,11 +299,11 @@
         // keep the focused (or selected) tab inside the visible window
         var shown = tabEls[(gi >= 2 ? gi : selected) - 2];
         if (shown) {
-            var box = tabsBox.clientWidth - 10, off = parseFloat(strip.dataset.off || '0');
+            var box = tabsBox.clientWidth - 10, off = stripOff;
             var l = shown.offsetLeft, r = l + shown.offsetWidth;
             if (l < off) off = l;
             else if (r > off + box) off = r - box;
-            strip.dataset.off = String(off);
+            stripOff = off;
             strip.style.transform = 'translateX(' + (-off) + 'px)';
         }
     }
