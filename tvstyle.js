@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v11';
+    var VERSION = 'v12';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -87,9 +87,15 @@
         '#tv-bar .circ.sel{background:rgba(255,255,255,.25);}',
         '#tv-bar .circ.f{background:#fff;color:#111114;transform:scale(1.08);}',
         '#tv-bar .circ.f img{opacity:.92;}',
-        /* the launcher focus ring on cards: warm white, thinner, with a soft glow */
-        'ytlr-tile-header-renderer::after{border-color:#fffaee!important;border-width:3px!important;top:-4px!important;left:-4px!important;' +
-        'right:-4px!important;bottom:-4px!important;border-radius:16px!important;box-shadow:0 0 22px 4px rgba(230,210,180,.55)!important;}'
+        /* focus as in the Lampa skin: no ring, a thin soft white edge, and under the card a glow
+           in the picture's own colours (.tv-amb, built in JS: Cobalt has no CSS blur, so it is a
+           few faint, offset copies of the thumbnail; it stays within the row's 10px margin,
+           which the list clips) */
+        'ytlr-tile-header-renderer::after{border-color:rgba(255,255,255,.45)!important;border-width:1.5px!important;top:0!important;' +
+        'left:0!important;right:0!important;bottom:0!important;border-radius:12px!important;box-shadow:none!important;}',
+        'ytlr-tile-header-renderer>*{position:relative;z-index:1;}',
+        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-10px;top:-10px;right:-10px;bottom:-10px;z-index:0;pointer-events:none;}',
+        '.tv-amb i{position:absolute;display:block;background-size:100% 100%;border-radius:18px;}'
     ].join('\n');
 
     /**
@@ -364,7 +370,54 @@
         return gi >= 2 ? gi : 2;
     }
 
+    // ---------- ambient glow under the focused card ----------
+    var ambTile = null, ambEl = null;
+    // [dx, dy, opacity]: a centre copy and two rings, so the edge fades in steps too small to see
+    var AMB = [[0, 0, 0.3]];
+    [[3, 0.13], [7, 0.07]].forEach(function (ring) {
+        for (var k = 0; k < 8; k++) {
+            var a = k * Math.PI / 4;
+            AMB.push([Math.cos(a) * ring[0], Math.sin(a) * ring[0], ring[1]]);
+        }
+    });
+
+    function thumbUrl(tile) {
+        var th = tile.querySelector('ytlr-thumbnail-details');
+        if (!th) return '';
+        var bg = th.style.backgroundImage || getComputedStyle(th).backgroundImage || '';
+        if (!bg || bg === 'none') return '';
+        // the 320x180 variant: softer, and lighter for nine-plus copies
+        return bg.replace(/\/(hq720|hqdefault|sddefault|maxresdefault)\.jpg[^"')]*/, '/mqdefault.jpg');
+    }
+
+    function ambient() {
+        var tile = up(document.activeElement, 'ytlr-tile-renderer');
+        if (tile === ambTile && (!ambEl || ambEl.parentNode)) return;
+        if (ambEl && ambEl.parentNode) ambEl.parentNode.removeChild(ambEl);
+        ambTile = tile;
+        ambEl = null;
+        if (!tile) return;
+        var head = tile.querySelector('ytlr-tile-header-renderer'), url = thumbUrl(tile);
+        if (!head || !url) {
+            ambTile = null; // thumbnail not there yet: try again on the next tick
+            return;
+        }
+        ambEl = el('div', 'tv-amb');
+        var base = 6;
+        AMB.forEach(function (o) {
+            var c = el('i', '', ambEl);
+            c.style.left = (base + o[0]) + 'px';
+            c.style.top = (base + o[1]) + 'px';
+            c.style.right = (base - o[0]) + 'px';
+            c.style.bottom = (base - o[1]) + 'px';
+            c.style.opacity = String(o[2]);
+            c.style.backgroundImage = url;
+        });
+        head.insertBefore(ambEl, head.firstChild);
+    }
+
     function render() {
+        ambient();
         if (!document.body) return;
         var entries = guideEntries();
         if (!entries.length) {
