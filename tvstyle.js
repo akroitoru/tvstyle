@@ -1,0 +1,327 @@
+/*
+ * tvstyle — the Yasin TV launcher look for YouTube on TV (TizenTube Cobalt).
+ *
+ * Loaded by the bootstrap (d/x/userScript.js) next to TizenTube itself, then restyles
+ * YouTube's TV interface:
+ *   - the left guide becomes a top bar: app badge, sections as tabs (six fit, the rest
+ *     scroll), search and profile on the right. YouTube's own guide stays in the page,
+ *     invisible, and keeps doing the work; the bar mirrors it and translates the arrows;
+ *   - focus ring and glass surfaces as in the launcher.
+ */
+(function () {
+    'use strict';
+    // temporary: reports to a log server on the home LAN while the TV build is being debugged
+    var VERSION = 'v4';
+    var DEBUG_LOG = 'http://192.168.1.111:8098/';
+    function log() {
+        try {
+            var x = new XMLHttpRequest();
+            x.open('GET', DEBUG_LOG + '?m=' + encodeURIComponent(Array.prototype.join.call(arguments, ' ')));
+            x.send();
+        } catch (e) {}
+    }
+    window.__tvlog = log;
+    window.addEventListener('error', function (e) {
+        log('error', e.message, e.filename, e.lineno);
+    });
+    log('start', VERSION, location.href, 'state=' + document.readyState, 'body=' + !!document.body,
+        'closest=' + typeof Element.prototype.closest, 'again=' + !!window.__tvstyle);
+    if (window.__tvstyle) return;
+    window.__tvstyle = true;
+
+    var LEFT = 37, UP = 38, RIGHT = 39, DOWN = 40, BACK = 27;
+    var VISIBLE_TABS = 6;
+
+    // ---------- styles ----------
+    var CSS = [
+        /* YouTube's guide keeps working but is not shown; the page no longer slides right when it has focus */
+        'ytlr-guide-response{opacity:0!important;}',
+        'ytlr-surface-page,ytlr-search-container,ytlr-app-background-container{transform:translateX(-64px)!important;width:calc(100% + 64px)!important;}',
+        /* search: the query field sits right under the bar */
+        'ytlr-classic-search-page{top:52px!important;}',
+        /* the search row on top of browse pages: search lives in the bar now */
+        'ytlr-tv-surface-content-renderer>ytlr-search-bar{visibility:hidden!important;}',
+        /* pages with their own side list (Settings, Library...): the section title is the tab now */
+        'ytlr-tv-secondary-nav-renderer>div>yt-formatted-string{visibility:hidden!important;}',
+        /* top bar */
+        '#tv-bar{position:fixed;top:26px;left:40px;right:40px;height:52px;z-index:2147483000;display:flex;align-items:center;' +
+        'font-family:"YouTube Sans",Roboto,Arial,sans-serif;color:#fff;transition:opacity .2s,transform .2s;}',
+        '#tv-bar.hidden{opacity:0;transform:translateY(-12px);}',
+        '#tv-bar .gl{background:rgba(34,34,40,.78);border:1px solid rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 12px 30px rgba(0,0,0,.35);}',
+        '#tv-bar .badge{height:52px;box-sizing:border-box;border-radius:26px;padding:0 22px 0 16px;display:flex;align-items:center;font-size:20px;font-weight:700;flex:none;}',
+        '#tv-bar .badge i{width:12px;height:12px;border-radius:50%;background:#ff2d2d;margin-right:10px;}',
+        '#tv-bar .tabs{position:absolute;left:50%;transform:translateX(-50%);height:52px;box-sizing:border-box;border-radius:26px;padding:5px;overflow:hidden;}',
+        '#tv-bar .strip{display:flex;height:42px;transition:transform .25s;}',
+        '#tv-bar .tab{flex:none;height:42px;padding:0 18px;border-radius:21px;display:flex;align-items:center;font-size:18px;font-weight:600;' +
+        'color:rgba(255,255,255,.72);white-space:nowrap;transition:transform .15s,background .15s,color .15s;}',
+        '#tv-bar .tab.sel{background:rgba(255,255,255,.14);color:#fff;}',
+        '#tv-bar .tab.f{background:#fff;color:#111114;transform:scale(1.06);}',
+        '#tv-bar .right{margin-left:auto;display:flex;gap:12px;flex:none;}',
+        '#tv-bar .circ{width:52px;height:52px;box-sizing:border-box;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
+        'overflow:hidden;transition:transform .15s,background .15s;}',
+        '#tv-bar .g{position:relative;width:24px;height:24px;}',
+        '#tv-bar .g i{position:absolute;display:block;box-sizing:border-box;}',
+        '#tv-bar .search .a{left:2px;top:2px;width:15px;height:15px;border:2px solid #fff;border-radius:50%;}',
+        '#tv-bar .search .b{left:15px;top:13px;width:2px;height:9px;background:#fff;border-radius:1px;transform:rotate(-45deg);}',
+        '#tv-bar .person .a{left:7px;top:2px;width:10px;height:10px;border:2px solid #fff;border-radius:50%;}',
+        '#tv-bar .person .b{left:3px;top:14px;width:18px;height:10px;border:2px solid #fff;border-bottom:0;border-radius:9px 9px 0 0;}',
+        '#tv-bar .circ.f .g i{border-color:#111114;}',
+        '#tv-bar .circ.f .search .b{background:#111114;}',
+        '#tv-bar .circ.avatar{background-size:cover;background-position:center;}',
+        '#tv-bar .circ.avatar .g{display:none;}',
+        '#tv-bar .circ.sel{background:rgba(255,255,255,.25);}',
+        '#tv-bar .circ.f{background:#fff;color:#111114;transform:scale(1.08);}',
+        '#tv-bar .circ.f img{opacity:.92;}',
+        /* the launcher focus ring on cards */
+        'ytlr-tile-renderer .zylon-focus,ytlr-tile-renderer.zylon-focus{}'
+    ].join('\n');
+
+    /**
+     * Our own <style>, carrying the page's CSP nonce when there is one (browsers drop inline
+     * styles without it). Cobalt ignores text appended to an existing style element.
+     */
+    function addStyle() {
+        var s = document.createElement('style');
+        s.id = 'tv-style';
+        var host = document.querySelector('style[nonce]');
+        var nonce = host && (host.nonce || host.getAttribute('nonce'));
+        if (nonce) s.setAttribute('nonce', nonce);
+        s.textContent = CSS;
+        (document.head || document.documentElement).appendChild(s);
+        log('style added', 'nonce=' + !!nonce, 'rules=' + (s.sheet && s.sheet.cssRules ? s.sheet.cssRules.length : '?'));
+    }
+
+    /** Nearest ancestor-or-self with the tag (Cobalt has no Element.closest). */
+    function up(el, tag) {
+        tag = tag.toUpperCase();
+        for (var e = el; e && e.nodeType === 1; e = e.parentElement) if (e.tagName === tag) return e;
+        return null;
+    }
+
+    // ---------- keys ----------
+    var sending = false;
+
+    function send(code) {
+        sending = true;
+        try {
+            var target = document.activeElement || document;
+            ['keydown', 'keyup'].forEach(function (type) {
+                var e = document.createEvent('Event');
+                e.initEvent(type, true, true);
+                e.keyCode = code;
+                e.which = code;
+                target.dispatchEvent(e);
+            });
+        } finally {
+            sending = false;
+        }
+    }
+
+    function guideEntries() {
+        return Array.prototype.slice.call(document.querySelectorAll('ytlr-guide-response ytlr-guide-entry-renderer'));
+    }
+
+    /** Index of the focused guide entry, -1 when focus is elsewhere. */
+    function focusedEntry(entries) {
+        var a = document.activeElement;
+        if (!a) return -1;
+        var e = up(a, 'ytlr-guide-entry-renderer');
+        if (!e) {
+            // focus can sit on a wrapper inside the guide
+            if (!up(a, 'ytlr-guide-response')) return -1;
+            e = a.querySelector && a.querySelector('ytlr-guide-entry-renderer');
+        }
+        return e ? entries.indexOf(e) : -1;
+    }
+
+    /** Bar order (left to right) as guide indexes: sections, then search (1) and account (0). */
+    function barOrder(n) {
+        var o = [];
+        for (var i = 2; i < n; i++) o.push(i);
+        if (n > 1) o.push(1);
+        if (n > 0) o.push(0);
+        return o;
+    }
+
+    function onWatch() {
+        return location.hash.indexOf('#/watch') === 0;
+    }
+
+    window.addEventListener('keydown', function (ev) {
+        if (sending) return;
+        var k = ev.keyCode;
+        if (k !== LEFT && k !== RIGHT && k !== UP && k !== DOWN) return;
+        var entries = guideEntries();
+        var gi = focusedEntry(entries);
+        if (gi >= 0) {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+            if (k === DOWN) {
+                send(RIGHT); // into the page, like Right from the side guide
+            } else if (k === LEFT || k === RIGHT) {
+                var order = barOrder(entries.length);
+                var pos = order.indexOf(gi) + (k === RIGHT ? 1 : -1);
+                if (pos < 0 || pos >= order.length) return;
+                var delta = order[pos] - gi;
+                for (var i = 0; i < Math.abs(delta); i++) send(delta > 0 ? DOWN : UP);
+            }
+            return;
+        }
+        // Up on the top row of a page: nothing above it but the bar; Back focuses the guide.
+        if (k === UP && !onWatch() && entries.length) {
+            var before = document.activeElement;
+            setTimeout(function () {
+                var now = document.activeElement;
+                var lost = now === before || (now && up(now, 'ytlr-search-bar'));
+                if (lost) send(BACK);
+            }, 160);
+        }
+    }, true);
+
+    // ---------- bar ----------
+    var stripOff = 0, bar, strip, tabsBox, searchBtn, accountBtn, tabEls = [], builtFor = '', selected = 2;
+
+    /** Search and person glyphs drawn with CSS boxes (Cobalt renders no SVG). */
+    function glyph(parent, kind) {
+        var g = el('div', 'g ' + kind, parent);
+        el('i', 'a', g);
+        el('i', 'b', g);
+        return g;
+    }
+
+    function el(tag, cls, parent, text) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (text) e.textContent = text;
+        if (parent) parent.appendChild(e);
+        return e;
+    }
+
+    function label(e) {
+        return (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function build(entries) {
+        if (!bar) {
+            bar = el('div', '', document.body);
+            bar.id = 'tv-bar';
+            var badge = el('div', 'badge gl', bar);
+            el('i', '', badge);
+            badge.appendChild(document.createTextNode('YouTube'));
+            tabsBox = el('div', 'tabs gl', bar);
+            strip = el('div', 'strip', tabsBox);
+            var right = el('div', 'right', bar);
+            searchBtn = el('div', 'circ gl', right);
+            glyph(searchBtn, 'search');
+            accountBtn = el('div', 'circ gl', right);
+            glyph(accountBtn, 'person');
+        }
+        while (strip.firstChild) strip.removeChild(strip.firstChild);
+        tabEls = [];
+        for (var i = 2; i < entries.length; i++) {
+            var t = document.createElement('div');
+            t.className = 'tab';
+            t.textContent = label(entries[i]);
+            strip.appendChild(t);
+            tabEls.push(t);
+        }
+        // at most six tabs wide; the rest scroll into view
+        var w = 0;
+        for (var j = 0; j < tabEls.length && j < VISIBLE_TABS; j++) w += tabEls[j].offsetWidth;
+        tabsBox.style.width = (w + 10) + 'px';
+        var img = entries[0] && entries[0].querySelector('img');
+        if (img && img.src) {
+            accountBtn.style.backgroundImage = 'url("' + img.src + '")';
+            accountBtn.classList.add('avatar');
+        }
+    }
+
+    /**
+     * The section on screen. The guide marks it only through its own (obfuscated) classes, so
+     * take the one section entry whose markup differs from all the others (icons aside).
+     */
+    function currentSection(entries) {
+        var sigs = entries.map(function (e, i) {
+            if (i < 2) return '';
+            var parts = [];
+            Array.prototype.forEach.call(e.querySelectorAll('*'), function (c) {
+                if (up(c, 'yt-icon')) return;
+                parts.push(typeof c.className === 'string' ? c.className : '');
+            });
+            return parts.join('/');
+        });
+        var count = {};
+        sigs.forEach(function (s, i) { if (i >= 2) count[s] = (count[s] || 0) + 1; });
+        var odd = -1;
+        for (var i = 2; i < sigs.length; i++) {
+            if (count[sigs[i]] === 1) {
+                if (odd >= 0) return -1; // more than one differs: can't tell
+                odd = i;
+            }
+        }
+        return odd;
+    }
+
+    function render() {
+        if (!document.body) return;
+        var entries = guideEntries();
+        if (!entries.length) {
+            if (bar) bar.classList.add('hidden');
+            return;
+        }
+        var key = entries.map(label).join('|');
+        if (key !== builtFor) {
+            builtFor = key;
+            build(entries);
+        }
+        bar.classList.toggle('hidden', onWatch());
+        var gi = focusedEntry(entries);
+        var cur = currentSection(entries);
+        if (location.hash.indexOf('#/search') === 0) selected = 1;
+        else if (cur >= 2) selected = cur;
+        else if (gi >= 2) selected = gi;
+        for (var i = 0; i < tabEls.length; i++) {
+            tabEls[i].classList.toggle('f', gi === i + 2);
+            tabEls[i].classList.toggle('sel', selected === i + 2 && gi !== i + 2);
+        }
+        searchBtn.classList.toggle('f', gi === 1);
+        searchBtn.classList.toggle('sel', selected === 1 && gi !== 1);
+        accountBtn.classList.toggle('f', gi === 0);
+        // keep the focused (or selected) tab inside the visible window
+        var shown = tabEls[(gi >= 2 ? gi : selected) - 2];
+        if (shown) {
+            var box = tabsBox.clientWidth - 10, off = stripOff;
+            var l = shown.offsetLeft, r = l + shown.offsetWidth;
+            if (l < off) off = l;
+            else if (r > off + box) off = r - box;
+            stripOff = off;
+            strip.style.transform = 'translateX(' + (-off) + 'px)';
+        }
+    }
+
+    var errors = 0;
+
+    function start() {
+        try {
+            addStyle();
+            log('style', !!document.querySelector('style[nonce]'), document.querySelectorAll('ytlr-guide-entry-renderer').length);
+        } catch (e) {
+            log('addStyle failed', e && e.message);
+        }
+        setInterval(function () {
+            try {
+                render();
+            } catch (e) {
+                if (errors++ < 5) log('render failed', e && e.message, e && e.stack && e.stack.slice(0, 300));
+            }
+        }, 120);
+        setTimeout(function () {
+            log('after 15s', 'bar=' + !!document.getElementById('tv-bar'), 'entries=' + guideEntries().length,
+                'hash=' + location.hash, 'guideOpacity=' + (document.querySelector('ytlr-guide-response') &&
+                getComputedStyle(document.querySelector('ytlr-guide-response')).opacity));
+        }, 15000);
+    }
+
+    if (document.body) start();
+    else document.addEventListener('DOMContentLoaded', start);
+})();
