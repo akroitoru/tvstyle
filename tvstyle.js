@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v5';
+    var VERSION = 'v6';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -44,7 +44,7 @@
         /* pages with their own side list (Settings, Library...): the section title is the tab now */
         'ytlr-tv-secondary-nav-renderer>div>yt-formatted-string{visibility:hidden!important;}',
         /* top bar */
-        '#tv-bar{position:fixed;top:26px;left:40px;right:40px;height:52px;z-index:2147483000;display:flex;align-items:center;' +
+        '#tv-bar{position:fixed;top:26px;left:40px;width:1200px;height:52px;z-index:2147483000;display:flex;align-items:center;' +
         'font-family:"YouTube Sans",Roboto,Arial,sans-serif;color:#fff;transition:opacity .2s,transform .2s;}',
         '#tv-bar.hidden{opacity:0;transform:translateY(-12px);}',
         '#tv-bar .gl{background:rgba(34,34,40,.78);border:1px solid rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 12px 30px rgba(0,0,0,.35);}',
@@ -328,6 +328,16 @@
                 if (errors++ < 5) log('render failed', e && e.message, e && e.stack && e.stack.slice(0, 300));
             }
         }, 120);
+        setTimeout(function () {
+            var g = document.querySelector('ytlr-guide-response');
+            var items = g ? g.querySelectorAll('[role],[tabindex],ytlr-guide-entry-renderer,ytlr-button') : [];
+            var desc = [];
+            for (var i = 0; i < items.length && i < 30; i++) {
+                var it = items[i];
+                desc.push(it.tagName.toLowerCase() + '[' + (it.getAttribute('role') || '') + '|' + (it.getAttribute('aria-label') || '').slice(0, 14) + ']');
+            }
+            log('guide', desc.join(' '));
+        }, 8000);
         setTimeout(function () {
             log('after 15s', 'bar=' + !!document.getElementById('tv-bar'), 'entries=' + guideEntries().length,
                 'hash=' + location.hash, 'guideOpacity=' + (document.querySelector('ytlr-guide-response') &&
