@@ -31,11 +31,17 @@
         return s ? (s.nonce || s.getAttribute('nonce') || '') : '';
     }
 
+    // Browsers with Trusted Types (desktop Chrome) refuse plain strings as script URLs.
+    var policy = null;
+    try {
+        if (window.trustedTypes) policy = window.trustedTypes.createPolicy('tvstyle', {createScriptURL: function (u) { return u; }});
+    } catch (e) {}
+
     function inject(src, onerror) {
         var s = document.createElement('script');
         var n = nonce();
         if (n) s.setAttribute('nonce', n);
-        s.src = src;
+        s.src = policy ? policy.createScriptURL(src) : src;
         s.onerror = onerror || null;
         (document.head || document.documentElement).appendChild(s);
     }
@@ -56,6 +62,6 @@
     }
 
     log('start nonce=' + !!nonce());
-    inject(TIZENTUBE, function () { log('tizentube failed'); });
+    if (!window.__tvbootNoTizenTube) inject(TIZENTUBE, function () { log('tizentube failed'); }); // flag: desktop preview
     inject(STYLE, fromLan);
 })();
