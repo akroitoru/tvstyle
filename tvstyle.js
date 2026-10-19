@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v12';
+    var VERSION = 'v13';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -45,7 +45,9 @@
         'display:flex!important;flex-direction:row!important;align-items:center;}',
         'ytlr-classic-search-page>div>ytlr-search-voice{position:relative!important;left:0!important;top:0!important;flex:none;}',
         'ytlr-classic-search-page ytlr-search-text-box{width:358px!important;margin-left:12px!important;flex:none;}',
-        'ytlr-classic-search-page ytlr-search-text-box ytlr-text-box{width:358px!important;max-width:358px!important;}',
+        'ytlr-classic-search-page ytlr-search-text-box{overflow:hidden!important;border-radius:24px;}',
+        'ytlr-classic-search-page ytlr-search-text-box *{max-width:358px!important;box-sizing:border-box;}',
+        'ytlr-classic-search-page ytlr-search-text-box ytlr-text-box{width:358px!important;}',
         'ytlr-search-keyboard{left:117px!important;top:180px!important;}',
         'ytlr-search-suggestions{left:120px!important;top:410px!important;width:418px!important;height:270px!important;overflow:hidden;}',
         'ytlr-search-results{left:574px!important;top:100px!important;width:750px!important;height:620px!important;}',
