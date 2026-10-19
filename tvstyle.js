@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v6';
+    var VERSION = 'v7';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -119,18 +119,20 @@
     }
 
     function guideEntries() {
-        return Array.prototype.slice.call(document.querySelectorAll('ytlr-guide-response ytlr-guide-entry-renderer'));
+        // signed in, the account is its own element type; as a guest it is a plain entry ("Войти")
+        return Array.prototype.slice.call(document.querySelectorAll(
+            'ytlr-guide-response ytlr-guide-account-entry-renderer, ytlr-guide-response ytlr-guide-entry-renderer'));
     }
 
     /** Index of the focused guide entry, -1 when focus is elsewhere. */
     function focusedEntry(entries) {
         var a = document.activeElement;
         if (!a) return -1;
-        var e = up(a, 'ytlr-guide-entry-renderer');
+        var e = up(a, 'ytlr-guide-entry-renderer') || up(a, 'ytlr-guide-account-entry-renderer');
         if (!e) {
             // focus can sit on a wrapper inside the guide
             if (!up(a, 'ytlr-guide-response')) return -1;
-            e = a.querySelector && a.querySelector('ytlr-guide-entry-renderer');
+            e = a.querySelector && a.querySelector('ytlr-guide-entry-renderer, ytlr-guide-account-entry-renderer');
         }
         return e ? entries.indexOf(e) : -1;
     }
@@ -230,9 +232,10 @@
         var w = 0;
         for (var j = 0; j < tabEls.length && j < VISIBLE_TABS; j++) w += tabEls[j].offsetWidth;
         tabsBox.style.width = (w + 10) + 'px';
-        var img = entries[0] && entries[0].querySelector('img');
-        if (img && img.src) {
-            accountBtn.style.backgroundImage = 'url("' + img.src + '")';
+        var img = entries[0] && entries[0].querySelector('img, image');
+        var src = img && (img.getAttribute('src') || img.src);
+        if (src) {
+            accountBtn.style.backgroundImage = 'url("' + src + '")';
             accountBtn.classList.add('avatar');
         }
     }
