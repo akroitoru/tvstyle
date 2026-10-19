@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v9';
+    var VERSION = 'v11';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -37,8 +37,21 @@
         /* YouTube's guide keeps working but is not shown; the page no longer slides right when it has focus */
         'ytlr-guide-response{opacity:0!important;}',
         'ytlr-surface-page,ytlr-search-container,ytlr-app-background-container{transform:translateX(-64px)!important;width:calc(100% + 64px)!important;}',
-        /* search: the query field sits right under the bar */
-        'ytlr-classic-search-page{top:52px!important;}',
+        /* search, as in the design: query field and keyboard on a glass panel at the left, suggestions
+           under the keyboard, results on the right. Lefts are +64px: the page is shifted by -64px. */
+        'ytlr-classic-search-page::before{content:"";position:absolute;left:104px;top:100px;width:450px;height:596px;box-sizing:border-box;' +
+        'border-radius:30px;background:rgba(34,34,40,.78);border:1px solid rgba(255,255,255,.17);}',
+        'ytlr-classic-search-page>div{left:120px!important;top:116px!important;width:418px!important;height:48px!important;' +
+        'display:flex!important;flex-direction:row!important;align-items:center;}',
+        'ytlr-classic-search-page>div>ytlr-search-voice{position:relative!important;left:0!important;top:0!important;flex:none;}',
+        'ytlr-classic-search-page ytlr-search-text-box{width:358px!important;margin-left:12px!important;flex:none;}',
+        'ytlr-classic-search-page ytlr-search-text-box ytlr-text-box{width:358px!important;max-width:358px!important;}',
+        'ytlr-search-keyboard{left:117px!important;top:180px!important;}',
+        'ytlr-search-suggestions{left:120px!important;top:410px!important;width:418px!important;height:270px!important;overflow:hidden;}',
+        'ytlr-search-results{left:574px!important;top:100px!important;width:750px!important;height:620px!important;}',
+        /* browsing the results YouTube hides keyboard and suggestions: the query stays, results go wide under it */
+        'html.tv-sr ytlr-classic-search-page::before{opacity:0;}',
+        'html.tv-sr ytlr-search-results{transform:none!important;left:0!important;top:180px!important;width:1344px!important;height:540px!important;}',
         /* the search row on top of browse pages: search lives in the bar now */
         'ytlr-tv-surface-content-renderer>ytlr-search-bar{visibility:hidden!important;}',
         /* pages with their own side list (Settings, Library...): the section title is the tab now */
@@ -152,6 +165,83 @@
         return location.hash.indexOf('#/watch') === 0;
     }
 
+    function swallow(ev) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+    }
+
+    /**
+     * Sends code until focus leaves the element with the tag (at most n times), one step at a
+     * time: on some pages YouTube moves focus a moment after the key, not during it.
+     */
+    function sendUntilOut(code, tag, n, done) {
+        if (n <= 0 || !up(document.activeElement, tag)) {
+            if (done) done();
+            return;
+        }
+        send(code);
+        setTimeout(function () { sendUntilOut(code, tag, n - 1, done); }, 70);
+    }
+
+    /**
+     * The search page is laid out differently from YouTube's (keyboard left, suggestions under it,
+     * results right), so arrows that cross between those blocks are translated to YouTube's own
+     * moves: suggestions are left of its keyboard and results below it.
+     */
+    function searchKeys(ev, k) {
+        var a = document.activeElement;
+        var kb = up(a, 'ytlr-search-keyboard'), sg = up(a, 'ytlr-search-suggestions'), rs = up(a, 'ytlr-search-results');
+        if (k === DOWN && (up(a, 'ytlr-search-voice') || up(a, 'ytlr-search-text-box'))) {
+            swallow(ev); // the keyboard is under the query field (YouTube: suggestions, then right)
+            send(DOWN);
+            setTimeout(function () {
+                if (up(document.activeElement, 'ytlr-search-suggestions')) send(RIGHT);
+            }, 70);
+            return true;
+        }
+        if (kb) {
+            var r = a.getBoundingClientRect(), R = kb.getBoundingClientRect();
+            if (k === DOWN && r.bottom >= R.bottom - 8) { // bottom row: suggestions are below
+                swallow(ev);
+                sendUntilOut(LEFT, 'ytlr-search-keyboard', 12);
+                return true;
+            }
+            if (k === RIGHT && r.right >= R.right - 8) { // right column: results are to the right
+                swallow(ev);
+                sendUntilOut(DOWN, 'ytlr-search-keyboard', 8);
+                return true;
+            }
+            if (k === LEFT && r.left <= R.left + 8) { // nothing left of the panel
+                swallow(ev);
+                return true;
+            }
+        } else if (sg) {
+            var sr = a.getBoundingClientRect(), SR = sg.getBoundingClientRect();
+            if (k === RIGHT) { // results, through the keyboard
+                swallow(ev);
+                send(RIGHT);
+                setTimeout(function () { sendUntilOut(DOWN, 'ytlr-search-keyboard', 8); }, 70);
+                return true;
+            }
+            if (k === UP && sr.top <= SR.top + 8) { // first suggestion: the keyboard is above
+                swallow(ev);
+                send(RIGHT);
+                return true;
+            }
+            if (k === LEFT) {
+                swallow(ev);
+                return true;
+            }
+        } else if (rs && k === LEFT && a.getBoundingClientRect().left < 100) {
+            swallow(ev); // leftmost result: back to the keyboard (YouTube: up out of the results)
+            sendUntilOut(UP, 'ytlr-search-results', 15, function () {
+                if (up(document.activeElement, 'ytlr-search-suggestions')) send(RIGHT);
+            });
+            return true;
+        }
+        return false;
+    }
+
     window.addEventListener('keydown', function (ev) {
         if (sending) return;
         var k = ev.keyCode;
@@ -172,6 +262,7 @@
             }
             return;
         }
+        if (location.hash.indexOf('#/search') === 0 && searchKeys(ev, k)) return;
         // Up on the top row of a page: nothing above it but the bar; Back focuses the guide.
         if (k === UP && !onWatch() && entries.length) {
             var before = document.activeElement;
@@ -286,6 +377,7 @@
             build(entries);
         }
         bar.classList.toggle('hidden', onWatch());
+        document.documentElement.classList.toggle('tv-sr', !!up(document.activeElement, 'ytlr-search-results'));
         var gi = focusedEntry(entries);
         // The section on screen: the entry the user last moved to in the bar; on the start page
         // (#/) the first section. The guide's own marking only helps when nothing else does.
