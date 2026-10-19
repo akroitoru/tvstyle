@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v8';
+    var VERSION = 'v9';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -64,7 +64,7 @@
         '#tv-bar .g{position:relative;width:24px;height:24px;}',
         '#tv-bar .g i{position:absolute;display:block;box-sizing:border-box;}',
         '#tv-bar .search .a{left:2px;top:2px;width:15px;height:15px;border:2px solid #fff;border-radius:50%;}',
-        '#tv-bar .search .b{left:15px;top:13px;width:2px;height:9px;background:#fff;border-radius:1px;transform:rotate(-45deg);}',
+        '#tv-bar .search .b{left:16px;top:14px;width:2.5px;height:8px;background:#fff;border-radius:1px;transform:rotate(-45deg);transform-origin:50% 0;}',
         '#tv-bar .person .a{left:7px;top:2px;width:10px;height:10px;border:2px solid #fff;border-radius:50%;}',
         '#tv-bar .person .b{left:3px;top:14px;width:18px;height:10px;border:2px solid #fff;border-bottom:0;border-radius:9px 9px 0 0;}',
         '#tv-bar .circ.f .g i{border-color:#111114;}',
@@ -74,8 +74,9 @@
         '#tv-bar .circ.sel{background:rgba(255,255,255,.25);}',
         '#tv-bar .circ.f{background:#fff;color:#111114;transform:scale(1.08);}',
         '#tv-bar .circ.f img{opacity:.92;}',
-        /* the launcher focus ring on cards */
-        'ytlr-tile-renderer .zylon-focus,ytlr-tile-renderer.zylon-focus{}'
+        /* the launcher focus ring on cards: warm white, thinner, with a soft glow */
+        'ytlr-tile-header-renderer::after{border-color:#fffaee!important;border-width:3px!important;top:-4px!important;left:-4px!important;' +
+        'right:-4px!important;bottom:-4px!important;border-radius:16px!important;box-shadow:0 0 22px 4px rgba(230,210,180,.55)!important;}'
     ].join('\n');
 
     /**
