@@ -11,6 +11,21 @@
  */
 (function () {
     'use strict';
+    // temporary: reports to a log server on the home LAN while the TV build is being debugged
+    var DEBUG_LOG = 'http://192.168.1.111:8098/';
+    function log() {
+        try {
+            var x = new XMLHttpRequest();
+            x.open('GET', DEBUG_LOG + '?m=' + encodeURIComponent(Array.prototype.join.call(arguments, ' ')));
+            x.send();
+        } catch (e) {}
+    }
+    window.__tvlog = log;
+    window.addEventListener('error', function (e) {
+        log('error', e.message, e.filename, e.lineno);
+    });
+    log('start', location.href, 'state=' + document.readyState, 'body=' + !!document.body,
+        'closest=' + typeof Element.prototype.closest, 'again=' + !!window.__tvstyle);
     if (window.__tvstyle) return;
     window.__tvstyle = true;
 
@@ -289,9 +304,27 @@
         }
     }
 
+    var errors = 0;
+
     function start() {
-        addStyle();
-        setInterval(render, 120);
+        try {
+            addStyle();
+            log('style', !!document.querySelector('style[nonce]'), document.querySelectorAll('ytlr-guide-entry-renderer').length);
+        } catch (e) {
+            log('addStyle failed', e && e.message);
+        }
+        setInterval(function () {
+            try {
+                render();
+            } catch (e) {
+                if (errors++ < 5) log('render failed', e && e.message, e && e.stack && e.stack.slice(0, 300));
+            }
+        }, 120);
+        setTimeout(function () {
+            log('after 15s', 'bar=' + !!document.getElementById('tv-bar'), 'entries=' + guideEntries().length,
+                'hash=' + location.hash, 'guideOpacity=' + (document.querySelector('ytlr-guide-response') &&
+                getComputedStyle(document.querySelector('ytlr-guide-response')).opacity));
+        }, 15000);
     }
 
     if (document.body) start();
