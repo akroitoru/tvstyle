@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v4';
+    var VERSION = 'v5';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -48,15 +48,16 @@
         'font-family:"YouTube Sans",Roboto,Arial,sans-serif;color:#fff;transition:opacity .2s,transform .2s;}',
         '#tv-bar.hidden{opacity:0;transform:translateY(-12px);}',
         '#tv-bar .gl{background:rgba(34,34,40,.78);border:1px solid rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 12px 30px rgba(0,0,0,.35);}',
-        '#tv-bar .badge{height:52px;box-sizing:border-box;border-radius:26px;padding:0 22px 0 16px;display:flex;align-items:center;font-size:20px;font-weight:700;flex:none;}',
+        '#tv-bar .badge{position:absolute;left:0;top:0;height:52px;box-sizing:border-box;border-radius:26px;padding:0 22px 0 16px;display:flex;align-items:center;font-size:20px;font-weight:700;flex:none;}',
         '#tv-bar .badge i{width:12px;height:12px;border-radius:50%;background:#ff2d2d;margin-right:10px;}',
-        '#tv-bar .tabs{position:absolute;left:50%;transform:translateX(-50%);height:52px;box-sizing:border-box;border-radius:26px;padding:5px;overflow:hidden;}',
+        '#tv-bar .tabs{position:absolute;left:50%;top:0;transform:translateX(-50%);height:52px;box-sizing:border-box;border-radius:26px;padding:5px;overflow:hidden;}',
         '#tv-bar .strip{display:flex;height:42px;transition:transform .25s;}',
         '#tv-bar .tab{flex:none;height:42px;padding:0 18px;border-radius:21px;display:flex;align-items:center;font-size:18px;font-weight:600;' +
         'color:rgba(255,255,255,.72);white-space:nowrap;transition:transform .15s,background .15s,color .15s;}',
         '#tv-bar .tab.sel{background:rgba(255,255,255,.14);color:#fff;}',
         '#tv-bar .tab.f{background:#fff;color:#111114;transform:scale(1.06);}',
-        '#tv-bar .right{margin-left:auto;display:flex;gap:12px;flex:none;}',
+        '#tv-bar .right{position:absolute;right:0;top:0;height:52px;display:flex;flex:none;}',
+        '#tv-bar .right .circ+.circ{margin-left:12px;}',
         '#tv-bar .circ{width:52px;height:52px;box-sizing:border-box;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
         'overflow:hidden;transition:transform .15s,background .15s;}',
         '#tv-bar .g{position:relative;width:24px;height:24px;}',
@@ -179,7 +180,7 @@
     }, true);
 
     // ---------- bar ----------
-    var stripOff = 0, bar, strip, tabsBox, searchBtn, accountBtn, tabEls = [], builtFor = '', selected = 2;
+    var lastFocused = -1, stripOff = 0, bar, strip, tabsBox, searchBtn, accountBtn, tabEls = [], builtFor = '', selected = 2;
 
     /** Search and person glyphs drawn with CSS boxes (Cobalt renders no SVG). */
     function glyph(parent, kind) {
@@ -262,6 +263,11 @@
         return odd;
     }
 
+    /** On the start page the first section is "Home", unless the user is moving over the tabs. */
+    function homeFocusedOrFirst(gi) {
+        return gi >= 2 ? gi : 2;
+    }
+
     function render() {
         if (!document.body) return;
         var entries = guideEntries();
@@ -276,10 +282,17 @@
         }
         bar.classList.toggle('hidden', onWatch());
         var gi = focusedEntry(entries);
-        var cur = currentSection(entries);
-        if (location.hash.indexOf('#/search') === 0) selected = 1;
-        else if (cur >= 2) selected = cur;
-        else if (gi >= 2) selected = gi;
+        // The section on screen: the entry the user last moved to in the bar; on the start page
+        // (#/) the first section. The guide's own marking only helps when nothing else does.
+        var h = location.hash;
+        if (gi >= 1) lastFocused = gi;
+        if (h.indexOf('#/search') === 0) selected = 1;
+        else if (h === '' || h === '#/' || h === '#') selected = homeFocusedOrFirst(gi);
+        else if (lastFocused >= 2) selected = lastFocused;
+        else {
+            var cur = currentSection(entries);
+            if (cur >= 2) selected = cur;
+        }
         for (var i = 0; i < tabEls.length; i++) {
             tabEls[i].classList.toggle('f', gi === i + 2);
             tabEls[i].classList.toggle('sel', selected === i + 2 && gi !== i + 2);
