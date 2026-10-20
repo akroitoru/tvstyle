@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v17';
+    var VERSION = 'v18';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -48,8 +48,8 @@
         'ytlr-classic-search-page ytlr-search-text-box{overflow:hidden!important;border-radius:24px;}',
         'ytlr-classic-search-page ytlr-search-text-box *{max-width:364px!important;box-sizing:border-box;}',
         'ytlr-classic-search-page ytlr-search-text-box ytlr-text-box{width:364px!important;}',
-        'ytlr-search-keyboard{left:132px!important;top:182px!important;}',
-        'ytlr-search-suggestions{left:132px!important;top:412px!important;width:424px!important;height:268px!important;overflow:hidden;}',
+        'ytlr-search-keyboard{left:132px!important;top:182px!important;margin-left:0!important;}',
+        'ytlr-search-suggestions{margin-left:0!important;left:132px!important;top:412px!important;width:424px!important;height:268px!important;overflow:hidden;}',
         'ytlr-search-results{left:608px!important;top:100px!important;width:736px!important;height:620px!important;}',
         /* browsing the results YouTube hides keyboard and suggestions: the query stays, results go wide under it */
         'html.tv-sr ytlr-classic-search-page::before{opacity:0;}',
@@ -422,30 +422,7 @@
         head.appendChild(ambEl);
     }
 
-    var searchReported = false;
-
-    /** Debug: geometry of the search page as Cobalt lays it out. */
-    function reportSearch() {
-        if (searchReported || location.hash.indexOf('#/search') !== 0) return;
-        var kb = document.querySelector('ytlr-search-keyboard');
-        if (!kb || !kb.getBoundingClientRect().width) return;
-        searchReported = true;
-        setTimeout(function () {
-            var parts = [];
-            ['ytlr-classic-search-page', 'ytlr-classic-search-page>div', 'ytlr-search-keyboard', 'yt-keyboard-key-grid',
-                'yt-simple-grid', 'yt-keyboard-key-list', 'ytlr-search-suggestions'].forEach(function (s) {
-                var e = document.querySelector(s);
-                if (!e) return;
-                var r = e.getBoundingClientRect(), cs = getComputedStyle(e);
-                parts.push(s + ' x' + Math.round(r.left) + ' w' + Math.round(r.width) + ' l=' + cs.left + ' ml=' + cs.marginLeft +
-                    ' pl=' + cs.paddingLeft + ' tf=' + (cs.transform || '').slice(0, 30) + ' pos=' + cs.position);
-            });
-            log('search', parts.join(' | '));
-        }, 800);
-    }
-
     function render() {
-        reportSearch();
         ambient();
         if (!document.body) return;
         var entries = guideEntries();
