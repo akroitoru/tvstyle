@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v22';
+    var VERSION = 'v23';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -106,7 +106,7 @@
            row of smaller cards under it. The rows are scaled as a whole (YouTube positions every card
            itself); titles show in the hero only */
         'html.tv-big ytlr-tv-surface-content-renderer>ytlr-section-list-renderer{transform-origin:0 0;' +
-        'transform:translate(21px,322px) scale(.8);width:1600px!important;}',
+        'transform:translate(21px,292px) scale(.8);width:1600px!important;}',
         'html.tv-big ytlr-tile-renderer ytlr-tile-metadata-renderer{visibility:hidden;}',
         'html.tv-big ytlr-section-list-renderer yt-virtual-list,html.tv-big ytlr-horizontal-list-renderer,' +
         'html.tv-big ytlr-shelf-renderer,html.tv-big ytlr-shelf-header{width:1600px!important;}',
