@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v26';
+    var VERSION = 'v27';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -104,8 +104,8 @@
         'html.tv-big .zylon-focus>ytlr-tile-header-renderer{transform:scale(1.05);}',
         'html.tv-big ytlr-horizontal-list-renderer>yt-virtual-list{margin-top:-24px;padding-top:24px;}',
         'ytlr-tile-header-renderer{z-index:0;}',
-        'ytlr-tile-header-renderer>div:not(.tv-amb){z-index:1;}',
-        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-20px;top:-20px;right:-20px;bottom:-20px;z-index:-1;pointer-events:none;}',
+        'ytlr-tile-header-renderer>div:not(.tv-amb){position:relative;z-index:1;}',
+        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-20px;top:-20px;right:-20px;bottom:-20px;z-index:0;pointer-events:none;}',
         '.tv-amb i{position:absolute;display:block;background-size:100% 100%;border-radius:18px;}',
         /* home with YouTube's big tiles, as in the design: a hero for the focused video on top and one
            row of smaller cards under it. The rows are scaled as a whole (YouTube positions every card
