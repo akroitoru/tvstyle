@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v25';
+    var VERSION = 'v26';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -403,15 +403,9 @@
 
     // ---------- ambient glow under the focused card ----------
     var ambTile = null, ambEl = null;
-    // [dx, dy, opacity]: a centre copy and two rings, so the edge fades in steps too small to see
-    // [dx, dy, opacity]: a centre copy and two rings, so the edge fades in steps too small to see
-    var AMB = [[0, 0, 0.75]];
-    [[5, 0.34], [11, 0.18]].forEach(function (ring) {
-        for (var k = 0; k < 8; k++) {
-            var a = k * Math.PI / 4;
-            AMB.push([Math.cos(a) * ring[0], Math.sin(a) * ring[0], ring[1]]);
-        }
-    });
+    // [grow px past the card edge, opacity]: stretched copies of the picture, larger ones fainter,
+    // so the colour fades outwards in steps too small to see (Cobalt has no CSS blur)
+    var AMB = [[3, 0.6], [6, 0.42], [9, 0.3], [12, 0.2], [15, 0.12], [18, 0.07]];
 
     function thumbUrl(tile) {
         var th = tile.querySelector('ytlr-thumbnail-details');
@@ -434,29 +428,17 @@
             return;
         }
         ambEl = el('div', 'tv-amb');
-        var base = 20;
+        var base = 20; // the layer reaches 20px past the card
         AMB.forEach(function (o) {
-            var c = el('i', '', ambEl);
-            c.style.left = (base + o[0]) + 'px';
-            c.style.top = (base + o[1]) + 'px';
-            c.style.right = (base - o[0]) + 'px';
-            c.style.bottom = (base - o[1]) + 'px';
-            c.style.opacity = String(o[2]);
+            var c = el('i', '', ambEl), inset = (base - o[0]) + 'px';
+            c.style.left = c.style.top = c.style.right = c.style.bottom = inset;
+            c.style.opacity = String(o[1]);
+            c.style.borderRadius = (12 + o[0]) + 'px';
             c.style.backgroundImage = url;
         });
         // appended last: YouTube's incremental DOM matches children by position, so a node put
         // first made it drop its own thumbnail when the card was re-rendered after losing focus
         head.appendChild(ambEl);
-        setTimeout(function () {
-            if (!ambEl) return;
-            var r = ambEl.getBoundingClientRect(), c = ambEl.firstChild && ambEl.firstChild.getBoundingClientRect();
-            var l = ambEl.parentElement;
-            var path = [];
-            for (var q = ambEl; q && path.length < 9; q = q.parentElement) path.push(q.tagName.toLowerCase() + ':' + getComputedStyle(q).overflow);
-            log('amb', Math.round(r.left), Math.round(r.top), Math.round(r.width) + 'x' + Math.round(r.height),
-                'kid', c && Math.round(c.width) + 'x' + Math.round(c.height), 'op', ambEl.firstChild && getComputedStyle(ambEl.firstChild).opacity,
-                'bg', ambEl.firstChild && (getComputedStyle(ambEl.firstChild).backgroundImage || '').slice(0, 40), path.join('>'));
-        }, 400);
     }
 
     var geoDone = false;
