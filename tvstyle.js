@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v29';
+    var VERSION = 'v30';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -94,7 +94,8 @@
            few faint, offset copies of the thumbnail; it stays within the row's 10px margin,
            which the list clips) */
         'ytlr-tile-header-renderer::after{border-color:#fffaee!important;border-width:3px!important;top:-3px!important;' +
-        'left:-3px!important;right:-3px!important;bottom:-3px!important;border-radius:14px!important;}',
+        'left:-3px!important;right:-3px!important;bottom:-3px!important;border-radius:14px!important;' +
+        'box-shadow:0 0 16px 3px rgba(255,244,225,.55),0 0 34px 6px rgba(255,236,205,.25)!important;}',
         /* the focused card grows (the card itself, so the row layout stays put) */
         'ytlr-tile-header-renderer{transition:transform .16s ease-out;}',
         '.zylon-focus>ytlr-tile-header-renderer{transform:scale(1.08);}',
