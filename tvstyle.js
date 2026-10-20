@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v13';
+    var VERSION = 'v15';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -39,18 +39,18 @@
         'ytlr-surface-page,ytlr-search-container,ytlr-app-background-container{transform:translateX(-64px)!important;width:calc(100% + 64px)!important;}',
         /* search, as in the design: query field and keyboard on a glass panel at the left, suggestions
            under the keyboard, results on the right. Lefts are +64px: the page is shifted by -64px. */
-        'ytlr-classic-search-page::before{content:"";position:absolute;left:104px;top:100px;width:450px;height:596px;box-sizing:border-box;' +
+        'ytlr-classic-search-page::before{content:"";position:absolute;left:104px;top:100px;width:480px;height:596px;box-sizing:border-box;' +
         'border-radius:30px;background:rgba(34,34,40,.78);border:1px solid rgba(255,255,255,.17);}',
-        'ytlr-classic-search-page>div{left:120px!important;top:116px!important;width:418px!important;height:48px!important;' +
+        'ytlr-classic-search-page>div{left:132px!important;top:118px!important;width:424px!important;height:48px!important;' +
         'display:flex!important;flex-direction:row!important;align-items:center;}',
         'ytlr-classic-search-page>div>ytlr-search-voice{position:relative!important;left:0!important;top:0!important;flex:none;}',
-        'ytlr-classic-search-page ytlr-search-text-box{width:358px!important;margin-left:12px!important;flex:none;}',
+        'ytlr-classic-search-page ytlr-search-text-box{width:364px!important;margin-left:12px!important;flex:none;}',
         'ytlr-classic-search-page ytlr-search-text-box{overflow:hidden!important;border-radius:24px;}',
-        'ytlr-classic-search-page ytlr-search-text-box *{max-width:358px!important;box-sizing:border-box;}',
-        'ytlr-classic-search-page ytlr-search-text-box ytlr-text-box{width:358px!important;}',
-        'ytlr-search-keyboard{left:117px!important;top:180px!important;}',
-        'ytlr-search-suggestions{left:120px!important;top:410px!important;width:418px!important;height:270px!important;overflow:hidden;}',
-        'ytlr-search-results{left:574px!important;top:100px!important;width:750px!important;height:620px!important;}',
+        'ytlr-classic-search-page ytlr-search-text-box *{max-width:364px!important;box-sizing:border-box;}',
+        'ytlr-classic-search-page ytlr-search-text-box ytlr-text-box{width:364px!important;}',
+        'ytlr-search-keyboard{left:132px!important;top:182px!important;width:424px!important;overflow:hidden;}',
+        'ytlr-search-suggestions{left:132px!important;top:412px!important;width:424px!important;height:268px!important;overflow:hidden;}',
+        'ytlr-search-results{left:608px!important;top:100px!important;width:736px!important;height:620px!important;}',
         /* browsing the results YouTube hides keyboard and suggestions: the query stays, results go wide under it */
         'html.tv-sr ytlr-classic-search-page::before{opacity:0;}',
         'html.tv-sr ytlr-search-results{transform:none!important;left:0!important;top:180px!important;width:1344px!important;height:540px!important;}',
@@ -95,8 +95,10 @@
            which the list clips) */
         'ytlr-tile-header-renderer::after{border-color:rgba(255,255,255,.45)!important;border-width:1.5px!important;top:0!important;' +
         'left:0!important;right:0!important;bottom:0!important;border-radius:12px!important;box-shadow:none!important;}',
-        'ytlr-tile-header-renderer>*{position:relative;z-index:1;}',
-        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-10px;top:-10px;right:-10px;bottom:-10px;z-index:0;pointer-events:none;}',
+        /* behind the thumbnail via z-index:-1 (YouTube's own children keep their positioning) */
+        'ytlr-tile-header-renderer{z-index:0;}',
+        'ytlr-tile-header-renderer>div:not(.tv-amb){z-index:1;}',
+        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-10px;top:-10px;right:-10px;bottom:-10px;z-index:-1;pointer-events:none;}',
         '.tv-amb i{position:absolute;display:block;background-size:100% 100%;border-radius:18px;}'
     ].join('\n');
 
@@ -415,7 +417,9 @@
             c.style.opacity = String(o[2]);
             c.style.backgroundImage = url;
         });
-        head.insertBefore(ambEl, head.firstChild);
+        // appended last: YouTube's incremental DOM matches children by position, so a node put
+        // first made it drop its own thumbnail when the card was re-rendered after losing focus
+        head.appendChild(ambEl);
     }
 
     function render() {
