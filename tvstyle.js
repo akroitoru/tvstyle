@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v15';
+    var VERSION = 'v16';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -48,7 +48,7 @@
         'ytlr-classic-search-page ytlr-search-text-box{overflow:hidden!important;border-radius:24px;}',
         'ytlr-classic-search-page ytlr-search-text-box *{max-width:364px!important;box-sizing:border-box;}',
         'ytlr-classic-search-page ytlr-search-text-box ytlr-text-box{width:364px!important;}',
-        'ytlr-search-keyboard{left:132px!important;top:182px!important;width:424px!important;overflow:hidden;}',
+        'ytlr-search-keyboard{left:132px!important;top:182px!important;}',
         'ytlr-search-suggestions{left:132px!important;top:412px!important;width:424px!important;height:268px!important;overflow:hidden;}',
         'ytlr-search-results{left:608px!important;top:100px!important;width:736px!important;height:620px!important;}',
         /* browsing the results YouTube hides keyboard and suggestions: the query stays, results go wide under it */
