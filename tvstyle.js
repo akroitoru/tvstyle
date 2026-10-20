@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v28';
+    var VERSION = 'v29';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -517,16 +517,24 @@
         heroBg.style.backgroundImage = thumbUrl(tile);
     }
 
-    /** The focused card's row slot goes above its neighbours, so the grown card isn't covered. */
-    var raised = null;
+    /**
+     * Every wrapper of the focused card, up to the list of rows, goes above its siblings: the next
+     * card in the row and the row below are later in the page and otherwise cover the grown card,
+     * its ring and its glow.
+     */
+    var raised = [];
 
     function raiseFocused() {
         var tile = up(document.activeElement, 'ytlr-tile-renderer');
-        var slot = tile && tile.parentElement && tile.parentElement.parentElement;
-        if (slot === raised) return;
-        if (raised) raised.style.zIndex = '';
-        raised = slot;
-        if (slot) slot.style.zIndex = '2';
+        if (tile && raised.length && raised[0] === tile) return;
+        raised.forEach(function (n) { n.style.zIndex = ''; });
+        raised = [];
+        for (var n = tile; n && n.tagName !== 'YTLR-SECTION-LIST-RENDERER'; n = n.parentElement) {
+            var pos = getComputedStyle(n).position;
+            if (pos === 'static') n.style.position = 'relative'; // z-index needs a positioned box
+            n.style.zIndex = '5';
+            raised.push(n);
+        }
     }
 
     function onFocusMoved() {
