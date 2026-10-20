@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v23';
+    var VERSION = 'v24';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -98,9 +98,14 @@
         /* the focused card grows (the card itself, so the row layout stays put) */
         'ytlr-tile-header-renderer{transition:transform .16s ease-out;}',
         '.zylon-focus>ytlr-tile-header-renderer{transform:scale(1.08);}',
+        /* on the compact home the focused card is always the first one: it grows from its left
+           edge (no overlap with the next card), and the row gets room above for the glow */
+        'html.tv-big ytlr-tile-header-renderer{transform-origin:0 50%;}',
+        'html.tv-big .zylon-focus>ytlr-tile-header-renderer{transform:scale(1.05);}',
+        'html.tv-big ytlr-horizontal-list-renderer>yt-virtual-list{margin-top:-24px;padding-top:24px;}',
         'ytlr-tile-header-renderer{z-index:0;}',
         'ytlr-tile-header-renderer>div:not(.tv-amb){z-index:1;}',
-        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-14px;top:-14px;right:-14px;bottom:-14px;z-index:-1;pointer-events:none;}',
+        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-20px;top:-20px;right:-20px;bottom:-20px;z-index:-1;pointer-events:none;}',
         '.tv-amb i{position:absolute;display:block;background-size:100% 100%;border-radius:18px;}',
         /* home with YouTube's big tiles, as in the design: a hero for the focused video on top and one
            row of smaller cards under it. The rows are scaled as a whole (YouTube positions every card
@@ -400,8 +405,8 @@
     var ambTile = null, ambEl = null;
     // [dx, dy, opacity]: a centre copy and two rings, so the edge fades in steps too small to see
     // [dx, dy, opacity]: a centre copy and two rings, so the edge fades in steps too small to see
-    var AMB = [[0, 0, 0.5]];
-    [[4, 0.22], [9, 0.12]].forEach(function (ring) {
+    var AMB = [[0, 0, 0.75]];
+    [[5, 0.34], [11, 0.18]].forEach(function (ring) {
         for (var k = 0; k < 8; k++) {
             var a = k * Math.PI / 4;
             AMB.push([Math.cos(a) * ring[0], Math.sin(a) * ring[0], ring[1]]);
@@ -429,7 +434,7 @@
             return;
         }
         ambEl = el('div', 'tv-amb');
-        var base = 14;
+        var base = 20;
         AMB.forEach(function (o) {
             var c = el('i', '', ambEl);
             c.style.left = (base + o[0]) + 'px';
