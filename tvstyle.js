@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v20';
+    var VERSION = 'v21';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -108,6 +108,8 @@
         'html.tv-big ytlr-tv-surface-content-renderer>ytlr-section-list-renderer{transform-origin:0 0;' +
         'transform:translate(39px,322px) scale(.62);width:2064px!important;}',
         'html.tv-big ytlr-tile-renderer ytlr-tile-metadata-renderer{visibility:hidden;}',
+        'html.tv-big ytlr-section-list-renderer yt-virtual-list,html.tv-big ytlr-horizontal-list-renderer,' +
+        'html.tv-big ytlr-shelf-renderer,html.tv-big ytlr-shelf-header{width:2064px!important;}',
         'html.tv-big ytlr-shelf-header yt-formatted-string{font-size:30px!important;}',
         'html.tv-big #container,html.tv-big ytlr-app-background-container{background:transparent!important;}',
         '#tv-hero{position:fixed;left:40px;top:118px;width:760px;z-index:3;color:#fff;font-family:"YouTube Sans",Roboto,Arial,sans-serif;display:none;}',
@@ -115,10 +117,10 @@
         '#tv-hero .eye{font-size:14px;font-weight:700;letter-spacing:1.5px;color:rgba(255,255,255,.62);}',
         '#tv-hero .ttl{margin-top:8px;font-size:36px;line-height:42px;font-weight:800;max-height:84px;overflow:hidden;}',
         '#tv-hero .meta{margin-top:10px;font-size:17px;color:rgba(255,255,255,.72);}',
-        '#tv-bg{position:fixed;left:0;top:0;width:1280px;height:720px;z-index:-1;background-size:cover;background-position:center;display:none;opacity:.55;}',
+        '#tv-bg{position:fixed;left:0;top:0;width:1280px;height:720px;z-index:-1;background-size:cover;background-position:center;display:none;opacity:.42;}',
         'html.tv-big #tv-bg{display:block;}',
         '#tv-shade{position:fixed;left:0;top:0;width:1280px;height:720px;z-index:-1;display:none;' +
-        'background-image:linear-gradient(90deg,rgba(11,12,16,.95) 0%,rgba(11,12,16,.55) 55%,rgba(11,12,16,.2) 100%);}',
+        'background-image:linear-gradient(90deg,rgba(11,12,16,.97) 0%,rgba(11,12,16,.75) 50%,rgba(11,12,16,.35) 100%);}',
         'html.tv-big #tv-shade{display:block;}'
     ].join('\n');
 
@@ -476,7 +478,13 @@
     }
 
     function tileInfo(tile) {
-        var lines = (tile.innerText || '').split('\n').map(function (s) { return s.trim(); }).filter(function (s) {
+        // textContent, not innerText: the card's own captions are hidden here, innerText skips them
+        var parts = [];
+        Array.prototype.forEach.call(tile.querySelectorAll('ytlr-tile-metadata-renderer yt-formatted-string, ytlr-tile-metadata-renderer ytlr-line'), function (n) {
+            if (n.querySelector && n.querySelector('yt-formatted-string')) return; // its strings come on their own
+            parts.push(n.textContent || '');
+        });
+        var lines = parts.map(function (s) { return s.replace(/\s+/g, ' ').trim(); }).filter(function (s) {
             return s.length > 1 && !/^\d+(:\d\d){1,2}$/.test(s) && s !== '4K' && s !== 'HD';
         });
         return {title: lines[0] || '', meta: lines.slice(1, 3).join(' · ')};
