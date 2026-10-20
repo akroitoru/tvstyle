@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v18';
+    var VERSION = 'v19';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -422,7 +422,32 @@
         head.appendChild(ambEl);
     }
 
+    var geoDone = false;
+
+    /** Debug: how the focused tile and its wrappers are laid out on this page. */
+    function reportGeo() {
+        if (geoDone) return;
+        var tile = up(document.activeElement, 'ytlr-tile-renderer');
+        if (!tile) return;
+        geoDone = true;
+        var out = [];
+        for (var e = document.activeElement, i = 0; e && i < 12; e = e.parentElement, i++) {
+            var r = e.getBoundingClientRect(), cs = getComputedStyle(e);
+            out.push(e.tagName.toLowerCase() + ' ' + Math.round(r.left) + ',' + Math.round(r.top) + ' ' + Math.round(r.width) + 'x' +
+                Math.round(r.height) + ' ov=' + cs.overflow + ' pos=' + cs.position + ' tf=' + (cs.transform || '').slice(0, 40) + ' z=' + cs.zIndex);
+        }
+        var head = tile.querySelector('ytlr-tile-header-renderer');
+        if (head) {
+            var a = getComputedStyle(head, '::after');
+            out.push('after: ' + a.borderTopWidth + ' ' + a.borderTopColor + ' top=' + a.top + ' r=' + a.borderTopLeftRadius);
+        }
+        var title = tile.querySelector('yt-formatted-string');
+        if (title) out.push('title fs=' + getComputedStyle(title).fontSize);
+        log('geo', out.join(' || '));
+    }
+
     function render() {
+        reportGeo();
         ambient();
         if (!document.body) return;
         var entries = guideEntries();
