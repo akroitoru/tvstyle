@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v21';
+    var VERSION = 'v22';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -106,11 +106,11 @@
            row of smaller cards under it. The rows are scaled as a whole (YouTube positions every card
            itself); titles show in the hero only */
         'html.tv-big ytlr-tv-surface-content-renderer>ytlr-section-list-renderer{transform-origin:0 0;' +
-        'transform:translate(39px,322px) scale(.62);width:2064px!important;}',
+        'transform:translate(21px,322px) scale(.8);width:1600px!important;}',
         'html.tv-big ytlr-tile-renderer ytlr-tile-metadata-renderer{visibility:hidden;}',
         'html.tv-big ytlr-section-list-renderer yt-virtual-list,html.tv-big ytlr-horizontal-list-renderer,' +
-        'html.tv-big ytlr-shelf-renderer,html.tv-big ytlr-shelf-header{width:2064px!important;}',
-        'html.tv-big ytlr-shelf-header yt-formatted-string{font-size:30px!important;}',
+        'html.tv-big ytlr-shelf-renderer,html.tv-big ytlr-shelf-header{width:1600px!important;}',
+        'html.tv-big ytlr-shelf-header yt-formatted-string{font-size:22px!important;}',
         'html.tv-big #container,html.tv-big ytlr-app-background-container{background:transparent!important;}',
         '#tv-hero{position:fixed;left:40px;top:118px;width:760px;z-index:3;color:#fff;font-family:"YouTube Sans",Roboto,Arial,sans-serif;display:none;}',
         'html.tv-big #tv-hero{display:block;}',
