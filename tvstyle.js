@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v24';
+    var VERSION = 'v25';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -447,6 +447,16 @@
         // appended last: YouTube's incremental DOM matches children by position, so a node put
         // first made it drop its own thumbnail when the card was re-rendered after losing focus
         head.appendChild(ambEl);
+        setTimeout(function () {
+            if (!ambEl) return;
+            var r = ambEl.getBoundingClientRect(), c = ambEl.firstChild && ambEl.firstChild.getBoundingClientRect();
+            var l = ambEl.parentElement;
+            var path = [];
+            for (var q = ambEl; q && path.length < 9; q = q.parentElement) path.push(q.tagName.toLowerCase() + ':' + getComputedStyle(q).overflow);
+            log('amb', Math.round(r.left), Math.round(r.top), Math.round(r.width) + 'x' + Math.round(r.height),
+                'kid', c && Math.round(c.width) + 'x' + Math.round(c.height), 'op', ambEl.firstChild && getComputedStyle(ambEl.firstChild).opacity,
+                'bg', ambEl.firstChild && (getComputedStyle(ambEl.firstChild).backgroundImage || '').slice(0, 40), path.join('>'));
+        }, 400);
     }
 
     var geoDone = false;
