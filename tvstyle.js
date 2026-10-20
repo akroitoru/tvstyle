@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v19';
+    var VERSION = 'v20';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -93,13 +93,33 @@
            in the picture's own colours (.tv-amb, built in JS: Cobalt has no CSS blur, so it is a
            few faint, offset copies of the thumbnail; it stays within the row's 10px margin,
            which the list clips) */
-        'ytlr-tile-header-renderer::after{border-color:rgba(255,255,255,.45)!important;border-width:1.5px!important;top:0!important;' +
-        'left:0!important;right:0!important;bottom:0!important;border-radius:12px!important;box-shadow:none!important;}',
-        /* behind the thumbnail via z-index:-1 (YouTube's own children keep their positioning) */
+        'ytlr-tile-header-renderer::after{border-color:#fffaee!important;border-width:3px!important;top:-3px!important;' +
+        'left:-3px!important;right:-3px!important;bottom:-3px!important;border-radius:14px!important;}',
+        /* the focused card grows (the card itself, so the row layout stays put) */
+        'ytlr-tile-header-renderer{transition:transform .16s ease-out;}',
+        '.zylon-focus>ytlr-tile-header-renderer{transform:scale(1.08);}',
         'ytlr-tile-header-renderer{z-index:0;}',
         'ytlr-tile-header-renderer>div:not(.tv-amb){z-index:1;}',
-        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-10px;top:-10px;right:-10px;bottom:-10px;z-index:-1;pointer-events:none;}',
-        '.tv-amb i{position:absolute;display:block;background-size:100% 100%;border-radius:18px;}'
+        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-14px;top:-14px;right:-14px;bottom:-14px;z-index:-1;pointer-events:none;}',
+        '.tv-amb i{position:absolute;display:block;background-size:100% 100%;border-radius:18px;}',
+        /* home with YouTube's big tiles, as in the design: a hero for the focused video on top and one
+           row of smaller cards under it. The rows are scaled as a whole (YouTube positions every card
+           itself); titles show in the hero only */
+        'html.tv-big ytlr-tv-surface-content-renderer>ytlr-section-list-renderer{transform-origin:0 0;' +
+        'transform:translate(39px,322px) scale(.62);width:2064px!important;}',
+        'html.tv-big ytlr-tile-renderer ytlr-tile-metadata-renderer{visibility:hidden;}',
+        'html.tv-big ytlr-shelf-header yt-formatted-string{font-size:30px!important;}',
+        'html.tv-big #container,html.tv-big ytlr-app-background-container{background:transparent!important;}',
+        '#tv-hero{position:fixed;left:40px;top:118px;width:760px;z-index:3;color:#fff;font-family:"YouTube Sans",Roboto,Arial,sans-serif;display:none;}',
+        'html.tv-big #tv-hero{display:block;}',
+        '#tv-hero .eye{font-size:14px;font-weight:700;letter-spacing:1.5px;color:rgba(255,255,255,.62);}',
+        '#tv-hero .ttl{margin-top:8px;font-size:36px;line-height:42px;font-weight:800;max-height:84px;overflow:hidden;}',
+        '#tv-hero .meta{margin-top:10px;font-size:17px;color:rgba(255,255,255,.72);}',
+        '#tv-bg{position:fixed;left:0;top:0;width:1280px;height:720px;z-index:-1;background-size:cover;background-position:center;display:none;opacity:.55;}',
+        'html.tv-big #tv-bg{display:block;}',
+        '#tv-shade{position:fixed;left:0;top:0;width:1280px;height:720px;z-index:-1;display:none;' +
+        'background-image:linear-gradient(90deg,rgba(11,12,16,.95) 0%,rgba(11,12,16,.55) 55%,rgba(11,12,16,.2) 100%);}',
+        'html.tv-big #tv-shade{display:block;}'
     ].join('\n');
 
     /**
@@ -377,8 +397,9 @@
     // ---------- ambient glow under the focused card ----------
     var ambTile = null, ambEl = null;
     // [dx, dy, opacity]: a centre copy and two rings, so the edge fades in steps too small to see
-    var AMB = [[0, 0, 0.3]];
-    [[3, 0.13], [7, 0.07]].forEach(function (ring) {
+    // [dx, dy, opacity]: a centre copy and two rings, so the edge fades in steps too small to see
+    var AMB = [[0, 0, 0.5]];
+    [[4, 0.22], [9, 0.12]].forEach(function (ring) {
         for (var k = 0; k < 8; k++) {
             var a = k * Math.PI / 4;
             AMB.push([Math.cos(a) * ring[0], Math.sin(a) * ring[0], ring[1]]);
@@ -389,9 +410,8 @@
         var th = tile.querySelector('ytlr-thumbnail-details');
         if (!th) return '';
         var bg = th.style.backgroundImage || getComputedStyle(th).backgroundImage || '';
-        if (!bg || bg === 'none') return '';
-        // the 320x180 variant: softer, and lighter for nine-plus copies
-        return bg.replace(/\/(hq720|hqdefault|sddefault|maxresdefault)\.jpg[^"')]*/, '/mqdefault.jpg');
+        // the thumbnail's own, already loaded picture: another size would mean a new download
+        return bg && bg !== 'none' ? bg : '';
     }
 
     function ambient() {
@@ -407,7 +427,7 @@
             return;
         }
         ambEl = el('div', 'tv-amb');
-        var base = 6;
+        var base = 14;
         AMB.forEach(function (o) {
             var c = el('i', '', ambEl);
             c.style.left = (base + o[0]) + 'px';
@@ -446,8 +466,76 @@
         log('geo', out.join(' || '));
     }
 
+    // ---------- hero for the focused video (big-tile home) ----------
+    var hero, heroEye, heroTitle, heroMeta, heroBg, heroFor = null;
+
+    function isBigHome() {
+        if (location.hash.indexOf('#/search') === 0 || onWatch()) return false;
+        var tile = document.querySelector('ytlr-tv-surface-content-renderer ytlr-tile-renderer');
+        return !!tile && tile.offsetWidth > 400;
+    }
+
+    function tileInfo(tile) {
+        var lines = (tile.innerText || '').split('\n').map(function (s) { return s.trim(); }).filter(function (s) {
+            return s.length > 1 && !/^\d+(:\d\d){1,2}$/.test(s) && s !== '4K' && s !== 'HD';
+        });
+        return {title: lines[0] || '', meta: lines.slice(1, 3).join(' · ')};
+    }
+
+    function updateHero() {
+        var big = isBigHome();
+        document.documentElement.classList.toggle('tv-big', big);
+        if (!big) return;
+        if (!hero) {
+            heroBg = el('div', '', document.body);
+            heroBg.id = 'tv-bg';
+            el('div', '', document.body).id = 'tv-shade';
+            hero = el('div', '', document.body);
+            hero.id = 'tv-hero';
+            heroEye = el('div', 'eye', hero);
+            heroTitle = el('div', 'ttl', hero);
+            heroMeta = el('div', 'meta', hero);
+        }
+        var tile = up(document.activeElement, 'ytlr-tile-renderer');
+        if (!tile || tile === heroFor) return;
+        heroFor = tile;
+        var info = tileInfo(tile);
+        var shelf = up(tile, 'ytlr-shelf-renderer');
+        var head = shelf && shelf.querySelector('ytlr-shelf-header');
+        heroEye.textContent = ((head && head.innerText) || '').trim().toUpperCase();
+        heroTitle.textContent = info.title;
+        heroMeta.textContent = info.meta;
+        heroBg.style.backgroundImage = thumbUrl(tile);
+    }
+
+    /** The focused card's row slot goes above its neighbours, so the grown card isn't covered. */
+    var raised = null;
+
+    function raiseFocused() {
+        var tile = up(document.activeElement, 'ytlr-tile-renderer');
+        var slot = tile && tile.parentElement && tile.parentElement.parentElement;
+        if (slot === raised) return;
+        if (raised) raised.style.zIndex = '';
+        raised = slot;
+        if (slot) slot.style.zIndex = '2';
+    }
+
+    function onFocusMoved() {
+        try {
+            raiseFocused();
+            ambient();
+            updateHero();
+        } catch (e) {}
+    }
+
+    // right after the focus moves, not on the next 120 ms tick
+    document.addEventListener('focus', function () { setTimeout(onFocusMoved, 0); }, true);
+    window.addEventListener('keydown', function () { setTimeout(onFocusMoved, 30); }, false);
+
     function render() {
         reportGeo();
+        raiseFocused();
+        updateHero();
         ambient();
         if (!document.body) return;
         var entries = guideEntries();
