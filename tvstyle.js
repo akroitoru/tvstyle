@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v27';
+    var VERSION = 'v28';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -102,10 +102,10 @@
            edge (no overlap with the next card), and the row gets room above for the glow */
         'html.tv-big ytlr-tile-header-renderer{transform-origin:0 50%;}',
         'html.tv-big .zylon-focus>ytlr-tile-header-renderer{transform:scale(1.05);}',
-        'html.tv-big ytlr-horizontal-list-renderer>yt-virtual-list{margin-top:-24px;padding-top:24px;}',
+        'html.tv-big ytlr-horizontal-list-renderer>yt-virtual-list{margin-top:-40px;padding-top:40px;}',
         'ytlr-tile-header-renderer{z-index:0;}',
         'ytlr-tile-header-renderer>div:not(.tv-amb){position:relative;z-index:1;}',
-        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-20px;top:-20px;right:-20px;bottom:-20px;z-index:0;pointer-events:none;}',
+        'ytlr-tile-header-renderer>.tv-amb{position:absolute;left:-30px;top:-30px;right:-30px;bottom:-30px;z-index:0;pointer-events:none;}',
         '.tv-amb i{position:absolute;display:block;background-size:100% 100%;border-radius:18px;}',
         /* home with YouTube's big tiles, as in the design: a hero for the focused video on top and one
            row of smaller cards under it. The rows are scaled as a whole (YouTube positions every card
@@ -126,7 +126,10 @@
         'html.tv-big #tv-bg{display:block;}',
         '#tv-shade{position:fixed;left:0;top:0;width:1280px;height:720px;z-index:-1;display:none;' +
         'background-image:linear-gradient(90deg,rgba(11,12,16,.97) 0%,rgba(11,12,16,.75) 50%,rgba(11,12,16,.35) 100%);}',
-        'html.tv-big #tv-shade{display:block;}'
+        'html.tv-big #tv-shade{display:block;}',
+        '#tv-edge{position:fixed;left:0;top:380px;width:18px;height:340px;z-index:3;display:none;' +
+        'background-image:linear-gradient(90deg,rgba(11,12,16,1) 40%,rgba(11,12,16,0) 100%);}',
+        'html.tv-big #tv-edge{display:block;}'
     ].join('\n');
 
     /**
@@ -405,7 +408,7 @@
     var ambTile = null, ambEl = null;
     // [grow px past the card edge, opacity]: stretched copies of the picture, larger ones fainter,
     // so the colour fades outwards in steps too small to see (Cobalt has no CSS blur)
-    var AMB = [[3, 0.6], [6, 0.42], [9, 0.3], [12, 0.2], [15, 0.12], [18, 0.07]];
+    var AMB = [[4, 0.95], [8, 0.75], [12, 0.58], [16, 0.42], [20, 0.3], [24, 0.18], [28, 0.1]];
 
     function thumbUrl(tile) {
         var th = tile.querySelector('ytlr-thumbnail-details');
@@ -428,7 +431,7 @@
             return;
         }
         ambEl = el('div', 'tv-amb');
-        var base = 20; // the layer reaches 20px past the card
+        var base = 30; // the layer reaches 30px past the card
         AMB.forEach(function (o) {
             var c = el('i', '', ambEl), inset = (base - o[0]) + 'px';
             c.style.left = c.style.top = c.style.right = c.style.bottom = inset;
@@ -495,6 +498,7 @@
             heroBg = el('div', '', document.body);
             heroBg.id = 'tv-bg';
             el('div', '', document.body).id = 'tv-shade';
+            el('div', '', document.body).id = 'tv-edge';
             hero = el('div', '', document.body);
             hero.id = 'tv-hero';
             heroEye = el('div', 'eye', hero);
