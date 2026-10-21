@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v33';
+    var VERSION = 'v34';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -36,7 +36,11 @@
     var CSS = [
         /* YouTube's guide keeps working but is not shown; the page no longer slides right when it has focus */
         'ytlr-guide-response{opacity:0!important;}',
+        /* fixed size: with a percentage width a playlist page (Смотреть позже) collapsed to 0 and
+           Cobalt painted nothing at all */
         'ytlr-surface-page,ytlr-search-container,ytlr-app-background-container{transform:translateX(-64px)!important;width:1344px!important;height:720px!important;}',
+        /* other pages start under the top bar (the compact home places its rows itself) */
+        'html:not(.tv-big) ytlr-tv-surface-content-renderer{top:64px!important;}',
         /* search, as in the design: query field and keyboard on a glass panel at the left, suggestions
            under the keyboard, results on the right. Lefts are +64px: the page is shifted by -64px. */
         'ytlr-classic-search-page::before{content:"";position:absolute;left:104px;top:100px;width:480px;height:596px;box-sizing:border-box;' +
@@ -559,40 +563,7 @@
         }
     }
 
-    // debug: how each page is laid out, 2 s after the address changes
-    var pageFor = '';
-
-    function reportPage() {
-        if (location.hash === pageFor) return;
-        pageFor = location.hash;
-        setTimeout(function () {
-            var out = ['page', location.hash, 'big=' + document.documentElement.classList.contains('tv-big')];
-            ['ytlr-surface-page', 'ytlr-tv-browse-renderer', 'ytlr-tv-surface-content-renderer', 'ytlr-section-list-renderer',
-                'ytlr-tv-secondary-nav-renderer', 'ytlr-playlist-renderer', 'ytlr-tile-renderer', 'ytlr-grid-renderer'].forEach(function (s) {
-                var all = document.querySelectorAll(s), vis = 0, first = '';
-                for (var i = 0; i < all.length; i++) {
-                    var r = all[i].getBoundingClientRect();
-                    if (r.width > 0) {
-                        vis++;
-                        if (!first) first = Math.round(r.left) + ',' + Math.round(r.top) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height) +
-                            ' tf=' + (getComputedStyle(all[i]).transform || '').slice(0, 36);
-                    }
-                }
-                out.push(s.replace('ytlr-', '') + ':' + all.length + '/' + vis + (first ? ' [' + first + ']' : ''));
-            });
-            var tags = {};
-            var page = document.querySelector('ytlr-surface-page') || document.body;
-            Array.prototype.forEach.call(page.querySelectorAll('*'), function (e) {
-                var n = e.tagName.toLowerCase();
-                if (n.indexOf('ytlr-') === 0 && e.getBoundingClientRect().width > 0) tags[n] = (tags[n] || 0) + 1;
-            });
-            out.push('tags=' + Object.keys(tags).slice(0, 25).join(','));
-            log.apply(null, out);
-        }, 2000);
-    }
-
     function render() {
-        reportPage();
         checkEmpty();
         raiseFocused();
         updateHero();
