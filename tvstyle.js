@@ -11,7 +11,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v32';
+    var VERSION = 'v33';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -36,7 +36,7 @@
     var CSS = [
         /* YouTube's guide keeps working but is not shown; the page no longer slides right when it has focus */
         'ytlr-guide-response{opacity:0!important;}',
-        'ytlr-surface-page,ytlr-search-container,ytlr-app-background-container{transform:translateX(-64px)!important;width:calc(100% + 64px)!important;}',
+        'ytlr-surface-page,ytlr-search-container,ytlr-app-background-container{transform:translateX(-64px)!important;width:1344px!important;height:720px!important;}',
         /* search, as in the design: query field and keyboard on a glass panel at the left, suggestions
            under the keyboard, results on the right. Lefts are +64px: the page is shifted by -64px. */
         'ytlr-classic-search-page::before{content:"";position:absolute;left:104px;top:100px;width:480px;height:596px;box-sizing:border-box;' +
