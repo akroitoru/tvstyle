@@ -9,10 +9,14 @@
  *     moving over the tabs only moves the highlight, OK opens the section;
  *   - focus ring and glass surfaces as in the launcher.
  */
-(function () {
+(function tvstyle() {
     'use strict';
+    // the bootstrap runs this copy at once on the next start, before any download
+    try {
+        if (window.localStorage) localStorage.setItem('tvstyle.js', '(' + tvstyle.toString() + ')();');
+    } catch (e) {}
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v45';
+    var VERSION = 'v47';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -70,6 +74,8 @@
         '#tv-bar{position:fixed;top:26px;left:40px;width:1200px;height:52px;z-index:2147483000;display:flex;align-items:center;' +
         'font-family:"YouTube Sans",Roboto,Arial,sans-serif;color:#fff;transition:opacity .2s,transform .2s;}',
         '#tv-bar.hidden{opacity:0;transform:translateY(-12px);}',
+        /* notifications (top right) start under the bar, not behind it */
+        'yt-overlay-toast-renderer{margin-top:44px!important;}',
         '#tv-bar .gl{background:rgba(34,34,40,.78);border:1px solid rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 12px 30px rgba(0,0,0,.35);}',
         '#tv-bar .badge{position:absolute;left:0;top:0;width:104px;height:52px;border-radius:26px;padding:0 22px 0 16px;display:flex;align-items:center;font-size:20px;font-weight:700;flex:none;}',
         '#tv-bar .badge i{width:12px;height:12px;border-radius:50%;background:#ff2d2d;margin-right:10px;}',

@@ -4,6 +4,10 @@
  * scripts and never needs to change:
  *   1. TizenTube itself, latest release (ad blocking, SponsorBlock, its settings);
  *   2. tvstyle.js from GitHub Pages, which updates within a minute of a push.
+ * The bootstrap runs only once the page has loaded and YouTube already shows its own layout,
+ * and the download took another second or two, so tvstyle.js keeps a copy of itself in
+ * localStorage and that copy runs here at once; the fresh one still loads and replaces the
+ * copy for the next start (a new version shows from the start after next).
  * YouTube's CSP only runs scripts that carry the page nonce, so both get it. If Pages can't
  * be reached, tvstyle.js comes from the home server instead (LAN, allowed by the CSP).
  */
@@ -62,6 +66,18 @@
     }
 
     log('start nonce=' + !!nonce());
+    var cached = null;
+    try {
+        cached = window.localStorage && localStorage.getItem('tvstyle.js');
+    } catch (e) {}
+    if (cached) {
+        try {
+            (0, eval)(cached);
+            log('cached copy ran ' + cached.length);
+        } catch (e) {
+            log('cached copy failed ' + (e && e.message));
+        }
+    }
     if (!window.__tvbootNoTizenTube) inject(TIZENTUBE, function () { log('tizentube failed'); }); // flag: desktop preview
     inject(STYLE, fromLan);
 })();
