@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v40';
+    var VERSION = 'v41';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -331,7 +331,14 @@
                 // into the page (the section on screen), like Right from the side guide; on the
                 // start page Right doesn't leave the guide, OK on its entry (the section on
                 // screen: the guide's focus only moves on OK) does
+                var desc = function (f) {
+                    var p = [];
+                    for (var n = f, d = 0; n && n.nodeType === 1 && d < 6; n = n.parentElement, d++) p.push(n.tagName.toLowerCase() + (n.getAttribute('tabindex') !== null ? '[t]' : ''));
+                    return p.join('<') + ' "' + label(f).slice(0, 20) + '"';
+                };
+                log('down0', desc(document.activeElement), 'gi=' + gi, 'entry=' + label(entries[gi]).slice(0, 20));
                 sendUntilOut(RIGHT, 'ytlr-guide-response', 2, function () {
+                    log('down1', desc(document.activeElement));
                     if (focusedEntry(guideEntries()) === gi) send(ENTER);
                     setTimeout(function () {
                         var f = document.activeElement;
