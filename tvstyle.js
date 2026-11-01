@@ -16,7 +16,7 @@
         if (window.localStorage) localStorage.setItem('tvstyle.js', '(' + tvstyle.toString() + ')();');
     } catch (e) {}
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v48';
+    var VERSION = 'v49';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -75,7 +75,7 @@
         'font-family:"YouTube Sans",Roboto,Arial,sans-serif;color:#fff;transition:opacity .2s,transform .2s;}',
         '#tv-bar.hidden{opacity:0;transform:translateY(-12px);}',
         /* notifications (top right) start under the bar, not behind it */
-        'yt-overlay-toast-renderer{margin-top:44px!important;}',
+        'yt-overlay-toast-renderer{top:48px!important;}',
         '#tv-bar .gl{background:rgba(34,34,40,.78);border:1px solid rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 12px 30px rgba(0,0,0,.35);}',
         '#tv-bar .badge{position:absolute;left:0;top:0;width:104px;height:52px;border-radius:26px;padding:0 22px 0 16px;display:flex;align-items:center;font-size:20px;font-weight:700;flex:none;}',
         '#tv-bar .badge i{width:12px;height:12px;border-radius:50%;background:#ff2d2d;margin-right:10px;}',
@@ -386,7 +386,29 @@
         return (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim();
     }
 
-    function build(entries) {
+    var BAR_KEY = 'tvstyle.bar';
+
+    /** Tabs and avatar from the last start: the bar shows before YouTube builds its guide. */
+    function savedBar() {
+        try {
+            var v = window.localStorage && JSON.parse(localStorage.getItem(BAR_KEY) || 'null');
+            return v && v.tabs && v.tabs.length ? v : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function buildFromGuide(entries) {
+        var tabs = entries.slice(2).map(label);
+        var img = entries[0] && entries[0].querySelector('img, image');
+        var avatar = (img && (img.getAttribute('src') || img.src)) || '';
+        build(tabs, avatar);
+        try {
+            if (window.localStorage) localStorage.setItem(BAR_KEY, JSON.stringify({tabs: tabs, avatar: avatar}));
+        } catch (e) {}
+    }
+
+    function build(tabs, avatar) {
         if (!bar) {
             bar = el('div', '', document.body);
             bar.id = 'tv-bar';
@@ -403,10 +425,10 @@
         }
         while (strip.firstChild) strip.removeChild(strip.firstChild);
         tabEls = [];
-        for (var i = 2; i < entries.length; i++) {
+        for (var i = 0; i < tabs.length; i++) {
             var t = document.createElement('div');
             t.className = 'tab';
-            t.textContent = label(entries[i]);
+            t.textContent = tabs[i];
             strip.appendChild(t);
             tabEls.push(t);
         }
@@ -414,10 +436,8 @@
         var w = 0;
         for (var j = 0; j < tabEls.length && j < VISIBLE_TABS; j++) w += tabEls[j].offsetWidth;
         tabsBox.style.width = w + 'px';
-        var img = entries[0] && entries[0].querySelector('img, image');
-        var src = img && (img.getAttribute('src') || img.src);
-        if (src) {
-            accountBtn.style.backgroundImage = 'url("' + src + '")';
+        if (avatar) {
+            accountBtn.style.backgroundImage = 'url("' + avatar + '")';
             accountBtn.classList.add('avatar');
         }
     }
@@ -618,13 +638,20 @@
         if (!document.body) return;
         var entries = guideEntries();
         if (!entries.length) {
-            if (bar) bar.classList.add('hidden');
+            // starting up: the saved bar, with Home marked, until the guide is there
+            var saved = !builtFor && savedBar();
+            if (saved && !onWatch()) {
+                builtFor = 'saved';
+                build(saved.tabs, saved.avatar);
+                if (tabEls[0]) tabEls[0].classList.add('sel');
+            }
+            if (bar) bar.classList.toggle('hidden', builtFor !== 'saved' || onWatch());
             return;
         }
         var key = entries.map(label).join('|');
         if (key !== builtFor) {
             builtFor = key;
-            build(entries);
+            buildFromGuide(entries);
         }
         bar.classList.toggle('hidden', onWatch());
         document.documentElement.classList.toggle('tv-sr', !!up(document.activeElement, 'ytlr-search-results'));
@@ -670,30 +697,7 @@
         } catch (e) {
             log('addStyle failed', e && e.message);
         }
-        log('t start', Math.round(performance.now()), 'guide=' + guideEntries().length,
-            'tiles=' + document.querySelectorAll('ytlr-tile-renderer').length);
-        var seenTags = {}, barLogged = false;
         setInterval(function () {
-            if (!barLogged && bar) { barLogged = true; log('t bar', Math.round(performance.now())); }
-            if (performance.now() < 60000) {
-                var all = document.querySelectorAll('*');
-                for (var q = 0; q < all.length; q++) {
-                    var tn = all[q].tagName.toLowerCase();
-                    if (seenTags[tn] || tn.indexOf('-') < 0) continue;
-                    seenTags[tn] = 1;
-                    if (tn === 'yt-overlay-toast-renderer') {
-                        var ch = [];
-                        for (var tq = all[q]; tq && tq.nodeType === 1 && ch.length < 6; tq = tq.parentElement) {
-                            var cs = getComputedStyle(tq), rq = tq.getBoundingClientRect();
-                            ch.push(tq.tagName.toLowerCase() + '{' + cs.position + ' t=' + cs.top + ' tf=' + cs.transform + ' mt=' + cs.marginTop + ' z=' + cs.zIndex + ' @' + Math.round(rq.top) + '}');
-                        }
-                        log('toast chain', ch.join(' < '));
-                    }
-                    var rc = all[q].getBoundingClientRect();
-                    log('t tag', Math.round(performance.now()), tn, Math.round(rc.left) + ',' + Math.round(rc.top) + ' ' + Math.round(rc.width) + 'x' + Math.round(rc.height),
-                        '"' + label(all[q]).slice(0, 40) + '"');
-                }
-            }
             try {
                 render();
             } catch (e) {
