@@ -16,7 +16,7 @@
         if (window.localStorage) localStorage.setItem('tvstyle.js', '(' + tvstyle.toString() + ')();');
     } catch (e) {}
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v47';
+    var VERSION = 'v48';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -681,6 +681,14 @@
                     var tn = all[q].tagName.toLowerCase();
                     if (seenTags[tn] || tn.indexOf('-') < 0) continue;
                     seenTags[tn] = 1;
+                    if (tn === 'yt-overlay-toast-renderer') {
+                        var ch = [];
+                        for (var tq = all[q]; tq && tq.nodeType === 1 && ch.length < 6; tq = tq.parentElement) {
+                            var cs = getComputedStyle(tq), rq = tq.getBoundingClientRect();
+                            ch.push(tq.tagName.toLowerCase() + '{' + cs.position + ' t=' + cs.top + ' tf=' + cs.transform + ' mt=' + cs.marginTop + ' z=' + cs.zIndex + ' @' + Math.round(rq.top) + '}');
+                        }
+                        log('toast chain', ch.join(' < '));
+                    }
                     var rc = all[q].getBoundingClientRect();
                     log('t tag', Math.round(performance.now()), tn, Math.round(rc.left) + ',' + Math.round(rc.top) + ' ' + Math.round(rc.width) + 'x' + Math.round(rc.height),
                         '"' + label(all[q]).slice(0, 40) + '"');
