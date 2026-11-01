@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v41';
+    var VERSION = 'v42';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -59,8 +59,10 @@
         /* browsing the results YouTube hides keyboard and suggestions: the query stays, results go wide under it */
         'html.tv-sr ytlr-classic-search-page::before{opacity:0;}',
         'html.tv-sr ytlr-search-results{transform:none!important;left:0!important;top:180px!important;width:1344px!important;height:540px!important;}',
-        /* the search row on top of browse pages: search lives in the bar now */
-        'ytlr-tv-surface-content-renderer>ytlr-search-bar{visibility:hidden!important;}',
+        /* the search row on top of browse pages: search lives in the bar now. Transparent, not
+           hidden: on the start page it is where Right from the guide goes, and a hidden element
+           takes no focus, so focus stayed in the guide */
+        'ytlr-tv-surface-content-renderer>ytlr-search-bar{opacity:0!important;}',
         /* pages with their own side list (Settings, Library...): the section title is the tab now */
         'ytlr-tv-secondary-nav-renderer>div>yt-formatted-string{visibility:hidden!important;}',
         /* top bar */
@@ -329,17 +331,9 @@
             if (k === DOWN) {
                 pending = -1;
                 // into the page (the section on screen), like Right from the side guide; on the
-                // start page Right doesn't leave the guide, OK on its entry (the section on
-                // screen: the guide's focus only moves on OK) does
-                var desc = function (f) {
-                    var p = [];
-                    for (var n = f, d = 0; n && n.nodeType === 1 && d < 6; n = n.parentElement, d++) p.push(n.tagName.toLowerCase() + (n.getAttribute('tabindex') !== null ? '[t]' : ''));
-                    return p.join('<') + ' "' + label(f).slice(0, 20) + '"';
-                };
-                log('down0', desc(document.activeElement), 'gi=' + gi, 'entry=' + label(entries[gi]).slice(0, 20));
+                // start page that lands on YouTube's search row (hidden), so on to the first row
                 sendUntilOut(RIGHT, 'ytlr-guide-response', 2, function () {
-                    log('down1', desc(document.activeElement));
-                    if (focusedEntry(guideEntries()) === gi) send(ENTER);
+                    if (up(document.activeElement, 'ytlr-search-bar')) send(DOWN);
                     setTimeout(function () {
                         var f = document.activeElement;
                         log('down', location.hash, f && f.tagName, 'inGuide=' + !!up(f, 'ytlr-guide-response'));
