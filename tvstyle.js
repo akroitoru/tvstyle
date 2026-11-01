@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v42';
+    var VERSION = 'v43';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -334,10 +334,6 @@
                 // start page that lands on YouTube's search row (hidden), so on to the first row
                 sendUntilOut(RIGHT, 'ytlr-guide-response', 2, function () {
                     if (up(document.activeElement, 'ytlr-search-bar')) send(DOWN);
-                    setTimeout(function () {
-                        var f = document.activeElement;
-                        log('down', location.hash, f && f.tagName, 'inGuide=' + !!up(f, 'ytlr-guide-response'));
-                    }, 400);
                 });
             } else if (k === LEFT || k === RIGHT) {
                 var order = barOrder(entries.length);
@@ -445,9 +441,12 @@
         return odd;
     }
 
-    /** On the start page the first section is "Home", unless the user is moving over the tabs. */
+    /**
+     * On the start page address (#/) the first section is "Home", unless the user is on the tabs
+     * or opened another section from them: Settings shows under the same address.
+     */
     function homeFocusedOrFirst(gi) {
-        return gi >= 2 ? gi : 2;
+        return gi >= 2 ? gi : lastFocused >= 2 ? lastFocused : 2;
     }
 
     // ---------- ambient glow under the focused card ----------
@@ -625,11 +624,9 @@
         var gi = focusedEntry(entries);
         if (gi < 0) pending = -1;
         var hi = pending >= 0 ? pending : gi; // the highlighted tab
-        // The section on screen: the entry the user last moved to in the bar; on the start page
-        // (#/) the first section. The guide's own marking only helps when nothing else does.
+        // The section on screen: the entry the user last opened or reached in the guide; on the
+        // start page (#/) the first section unless another one was opened there. The guide's own marking only helps when nothing else does.
         var h = location.hash;
-        var dbg = h + ' gi=' + gi + ' cur=' + currentSection(entries);
-        if (dbg !== lastDbg) { lastDbg = dbg; log('sect', dbg); }
         if (gi >= 1 && Date.now() - openedAt > 1500) lastFocused = gi;
         if (h.indexOf('#/search') === 0) selected = 1;
         else if (h === '' || h === '#/' || h === '#') selected = homeFocusedOrFirst(gi);
@@ -657,7 +654,7 @@
         }
     }
 
-    var errors = 0, lastDbg = '';
+    var errors = 0;
 
     function start() {
         try {
