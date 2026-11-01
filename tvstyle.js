@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v39';
+    var VERSION = 'v40';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -329,10 +329,14 @@
             if (k === DOWN) {
                 pending = -1;
                 // into the page (the section on screen), like Right from the side guide; on the
-                // start page the first Right sometimes leaves focus in the guide
-                sendUntilOut(RIGHT, 'ytlr-guide-response', 4, function () {
-                    var f = document.activeElement;
-                    log('down', location.hash, f && f.tagName, 'inGuide=' + !!up(f, 'ytlr-guide-response'));
+                // start page Right doesn't leave the guide, OK on its entry (the section on
+                // screen: the guide's focus only moves on OK) does
+                sendUntilOut(RIGHT, 'ytlr-guide-response', 2, function () {
+                    if (focusedEntry(guideEntries()) === gi) send(ENTER);
+                    setTimeout(function () {
+                        var f = document.activeElement;
+                        log('down', location.hash, f && f.tagName, 'inGuide=' + !!up(f, 'ytlr-guide-response'));
+                    }, 400);
                 });
             } else if (k === LEFT || k === RIGHT) {
                 var order = barOrder(entries.length);
