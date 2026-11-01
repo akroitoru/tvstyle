@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v35';
+    var VERSION = 'v36';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -298,6 +298,7 @@
     /** Moves the guide's focus to entry `to`, then opens it. */
     function openEntry(from, to) {
         var delta = to - from;
+        lastFocused = to; // the guide passes it too quickly for the render tick to notice
         for (var i = 0; i < Math.abs(delta); i++) send(delta > 0 ? DOWN : UP);
         setTimeout(function () {
             if (focusedEntry(guideEntries()) === to) send(ENTER);
