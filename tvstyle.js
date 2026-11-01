@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v38';
+    var VERSION = 'v39';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -328,7 +328,12 @@
             swallow(ev);
             if (k === DOWN) {
                 pending = -1;
-                send(RIGHT); // into the page (the section on screen), like Right from the side guide
+                // into the page (the section on screen), like Right from the side guide; on the
+                // start page the first Right sometimes leaves focus in the guide
+                sendUntilOut(RIGHT, 'ytlr-guide-response', 4, function () {
+                    var f = document.activeElement;
+                    log('down', location.hash, f && f.tagName, 'inGuide=' + !!up(f, 'ytlr-guide-response'));
+                });
             } else if (k === LEFT || k === RIGHT) {
                 var order = barOrder(entries.length);
                 var pos = order.indexOf(pending >= 0 ? pending : gi) + (k === RIGHT ? 1 : -1);
