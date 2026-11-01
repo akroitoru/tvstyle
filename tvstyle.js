@@ -6,12 +6,13 @@
  *   - the left guide becomes a top bar: app badge, sections as tabs (six fit, the rest
  *     scroll), search and profile on the right. YouTube's own guide stays in the page,
  *     invisible, and keeps doing the work; the bar mirrors it and translates the arrows;
+ *     moving over the tabs only moves the highlight, OK opens the section;
  *   - focus ring and glass surfaces as in the launcher.
  */
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v34';
+    var VERSION = 'v35';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -29,7 +30,7 @@
     if (window.__tvstyle) return;
     window.__tvstyle = true;
 
-    var LEFT = 37, UP = 38, RIGHT = 39, DOWN = 40, BACK = 27;
+    var LEFT = 37, UP = 38, RIGHT = 39, DOWN = 40, BACK = 27, ENTER = 13;
     var VISIBLE_TABS = 6;
 
     // ---------- styles ----------
@@ -287,23 +288,49 @@
         return false;
     }
 
+    /**
+     * The tab highlighted in the bar while the guide's focus stays on the section on screen
+     * (-1: none). YouTube opens a section as soon as its guide entry gets focus, so the guide is
+     * only moved on OK; until then Left/Right move this highlight alone.
+     */
+    var pending = -1;
+
+    /** Moves the guide's focus to entry `to`, then opens it. */
+    function openEntry(from, to) {
+        var delta = to - from;
+        for (var i = 0; i < Math.abs(delta); i++) send(delta > 0 ? DOWN : UP);
+        setTimeout(function () {
+            if (focusedEntry(guideEntries()) === to) send(ENTER);
+        }, 80);
+    }
+
     window.addEventListener('keydown', function (ev) {
         if (sending) return;
         var k = ev.keyCode;
-        if (k !== LEFT && k !== RIGHT && k !== UP && k !== DOWN) return;
         var entries = guideEntries();
         var gi = focusedEntry(entries);
+        if (gi < 0) pending = -1;
+        if (k === ENTER && gi >= 0 && pending >= 0) {
+            swallow(ev);
+            var to = pending;
+            pending = -1;
+            if (to !== gi) openEntry(gi, to);
+            else send(ENTER);
+            return;
+        }
+        if (k === BACK) pending = -1;
+        if (k !== LEFT && k !== RIGHT && k !== UP && k !== DOWN) return;
         if (gi >= 0) {
-            ev.preventDefault();
-            ev.stopImmediatePropagation();
+            swallow(ev);
             if (k === DOWN) {
-                send(RIGHT); // into the page, like Right from the side guide
+                pending = -1;
+                send(RIGHT); // into the page (the section on screen), like Right from the side guide
             } else if (k === LEFT || k === RIGHT) {
                 var order = barOrder(entries.length);
-                var pos = order.indexOf(gi) + (k === RIGHT ? 1 : -1);
+                var pos = order.indexOf(pending >= 0 ? pending : gi) + (k === RIGHT ? 1 : -1);
                 if (pos < 0 || pos >= order.length) return;
-                var delta = order[pos] - gi;
-                for (var i = 0; i < Math.abs(delta); i++) send(delta > 0 ? DOWN : UP);
+                pending = order[pos] === gi ? -1 : order[pos];
+                render();
             }
             return;
         }
@@ -582,6 +609,8 @@
         bar.classList.toggle('hidden', onWatch());
         document.documentElement.classList.toggle('tv-sr', !!up(document.activeElement, 'ytlr-search-results'));
         var gi = focusedEntry(entries);
+        if (gi < 0) pending = -1;
+        var hi = pending >= 0 ? pending : gi; // the highlighted tab
         // The section on screen: the entry the user last moved to in the bar; on the start page
         // (#/) the first section. The guide's own marking only helps when nothing else does.
         var h = location.hash;
@@ -594,14 +623,14 @@
             if (cur >= 2) selected = cur;
         }
         for (var i = 0; i < tabEls.length; i++) {
-            tabEls[i].classList.toggle('f', gi === i + 2);
-            tabEls[i].classList.toggle('sel', selected === i + 2 && gi !== i + 2);
+            tabEls[i].classList.toggle('f', hi === i + 2);
+            tabEls[i].classList.toggle('sel', selected === i + 2 && hi !== i + 2);
         }
-        searchBtn.classList.toggle('f', gi === 1);
-        searchBtn.classList.toggle('sel', selected === 1 && gi !== 1);
-        accountBtn.classList.toggle('f', gi === 0);
-        // keep the focused (or selected) tab inside the visible window
-        var shown = tabEls[(gi >= 2 ? gi : selected) - 2];
+        searchBtn.classList.toggle('f', hi === 1);
+        searchBtn.classList.toggle('sel', selected === 1 && hi !== 1);
+        accountBtn.classList.toggle('f', hi === 0);
+        // keep the highlighted (or selected) tab inside the visible window
+        var shown = tabEls[(hi >= 2 ? hi : selected) - 2];
         if (shown) {
             var box = tabsBox.clientWidth - 10, off = stripOff;
             var l = shown.offsetLeft, r = l + shown.offsetWidth;
