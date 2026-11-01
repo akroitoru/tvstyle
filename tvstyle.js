@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v37';
+    var VERSION = 'v38';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -293,12 +293,15 @@
      * (-1: none). YouTube opens a section as soon as its guide entry gets focus, so the guide is
      * only moved on OK; until then Left/Right move this highlight alone.
      */
-    var pending = -1;
+    var pending = -1, openedAt = 0;
 
     /** Moves the guide's focus to entry `to`, then opens it. */
     function openEntry(from, to) {
         var delta = to - from;
-        lastFocused = to; // the guide passes it too quickly for the render tick to notice
+        // the guide passes it too quickly for the render tick to notice, and while the section
+        // loads YouTube puts its focus back on the first one for a moment
+        lastFocused = to;
+        openedAt = Date.now();
         for (var i = 0; i < Math.abs(delta); i++) send(delta > 0 ? DOWN : UP);
         setTimeout(function () {
             if (focusedEntry(guideEntries()) === to) send(ENTER);
@@ -617,7 +620,7 @@
         var h = location.hash;
         var dbg = h + ' gi=' + gi + ' cur=' + currentSection(entries);
         if (dbg !== lastDbg) { lastDbg = dbg; log('sect', dbg); }
-        if (gi >= 1) lastFocused = gi;
+        if (gi >= 1 && Date.now() - openedAt > 1500) lastFocused = gi;
         if (h.indexOf('#/search') === 0) selected = 1;
         else if (h === '' || h === '#/' || h === '#') selected = homeFocusedOrFirst(gi);
         else if (lastFocused >= 2) selected = lastFocused;
