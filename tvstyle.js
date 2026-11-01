@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v43';
+    var VERSION = 'v44';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -34,6 +34,7 @@
     var VISIBLE_TABS = 6;
 
     // ---------- styles ----------
+    // Cobalt ignores box-sizing: sizes below are content sizes, padding comes on top.
     var CSS = [
         /* YouTube's guide keeps working but is not shown; the page no longer slides right when it has focus */
         'ytlr-guide-response{opacity:0!important;}',
@@ -70,9 +71,9 @@
         'font-family:"YouTube Sans",Roboto,Arial,sans-serif;color:#fff;transition:opacity .2s,transform .2s;}',
         '#tv-bar.hidden{opacity:0;transform:translateY(-12px);}',
         '#tv-bar .gl{background:rgba(34,34,40,.78);border:1px solid rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 12px 30px rgba(0,0,0,.35);}',
-        '#tv-bar .badge{position:absolute;left:0;top:0;width:142px;height:52px;box-sizing:border-box;border-radius:26px;padding:0 22px 0 16px;display:flex;align-items:center;font-size:20px;font-weight:700;flex:none;}',
+        '#tv-bar .badge{position:absolute;left:0;top:0;width:104px;height:52px;border-radius:26px;padding:0 22px 0 16px;display:flex;align-items:center;font-size:20px;font-weight:700;flex:none;}',
         '#tv-bar .badge i{width:12px;height:12px;border-radius:50%;background:#ff2d2d;margin-right:10px;}',
-        '#tv-bar .tabs{position:absolute;left:50%;top:0;transform:translateX(-50%);height:52px;box-sizing:border-box;border-radius:26px;padding:5px;overflow:hidden;}',
+        '#tv-bar .tabs{position:absolute;left:50%;top:0;transform:translateX(-50%);height:42px;border-radius:26px;padding:5px;overflow:hidden;}',
         '#tv-bar .strip{display:flex;height:42px;transition:transform .25s;}',
         '#tv-bar .tab{flex:none;height:42px;padding:0 18px;border-radius:21px;display:flex;align-items:center;font-size:18px;font-weight:600;' +
         'color:rgba(255,255,255,.72);white-space:nowrap;transition:transform .15s,background .15s,color .15s;}',
@@ -406,7 +407,7 @@
         // at most six tabs wide; the rest scroll into view
         var w = 0;
         for (var j = 0; j < tabEls.length && j < VISIBLE_TABS; j++) w += tabEls[j].offsetWidth;
-        tabsBox.style.width = (w + 10) + 'px';
+        tabsBox.style.width = w + 'px';
         var img = entries[0] && entries[0].querySelector('img, image');
         var src = img && (img.getAttribute('src') || img.src);
         if (src) {
