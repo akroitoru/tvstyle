@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v36';
+    var VERSION = 'v37';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -615,6 +615,8 @@
         // The section on screen: the entry the user last moved to in the bar; on the start page
         // (#/) the first section. The guide's own marking only helps when nothing else does.
         var h = location.hash;
+        var dbg = h + ' gi=' + gi + ' cur=' + currentSection(entries);
+        if (dbg !== lastDbg) { lastDbg = dbg; log('sect', dbg); }
         if (gi >= 1) lastFocused = gi;
         if (h.indexOf('#/search') === 0) selected = 1;
         else if (h === '' || h === '#/' || h === '#') selected = homeFocusedOrFirst(gi);
@@ -642,7 +644,7 @@
         }
     }
 
-    var errors = 0;
+    var errors = 0, lastDbg = '';
 
     function start() {
         try {
