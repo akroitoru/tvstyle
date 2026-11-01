@@ -12,7 +12,7 @@
 (function () {
     'use strict';
     // temporary: reports to a log server on the home LAN while the TV build is being debugged
-    var VERSION = 'v44';
+    var VERSION = 'v45';
     var DEBUG_LOG = 'http://192.168.1.111:8098/';
     function log() {
         try {
@@ -664,7 +664,22 @@
         } catch (e) {
             log('addStyle failed', e && e.message);
         }
+        log('t start', Math.round(performance.now()), 'guide=' + guideEntries().length,
+            'tiles=' + document.querySelectorAll('ytlr-tile-renderer').length);
+        var seenTags = {}, barLogged = false;
         setInterval(function () {
+            if (!barLogged && bar) { barLogged = true; log('t bar', Math.round(performance.now())); }
+            if (performance.now() < 60000) {
+                var all = document.querySelectorAll('*');
+                for (var q = 0; q < all.length; q++) {
+                    var tn = all[q].tagName.toLowerCase();
+                    if (seenTags[tn] || tn.indexOf('-') < 0) continue;
+                    seenTags[tn] = 1;
+                    var rc = all[q].getBoundingClientRect();
+                    log('t tag', Math.round(performance.now()), tn, Math.round(rc.left) + ',' + Math.round(rc.top) + ' ' + Math.round(rc.width) + 'x' + Math.round(rc.height),
+                        '"' + label(all[q]).slice(0, 40) + '"');
+                }
+            }
             try {
                 render();
             } catch (e) {
